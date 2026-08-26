@@ -1,6 +1,7 @@
 const express=require('express');
 const Router=express.Router();
 const Admin=require('../model/admin');
+const jwt = require('jsonwebtoken')
 
 Router.post('/regsiter',async(req,res)=>{
    
@@ -22,7 +23,42 @@ catch(error){
 
 
 });
-  
+
+
+Router.post('/login', async (req, res) => {
+    try{
+        const{email,password} = req.body;
+        const data =await Admin.findOne({email:email});
+        if(!data){
+            return res.json({msg:"Email not exit"});
+        }
+        if (data.password == password) {
+            const token = jwt.sign(
+                { adminId: data._id },
+                process.env.JWT_SECRET,
+                { expiresIn: '1d' }
+            );
+
+            return res.json({
+                msg:"Sucess",
+                token:token,
+                role:"admin",
+                name:data.name,
+                adminId:data._id
+            })
+
+        }else{
+            return res.json({msg:"Password is Incorrect"})
+                }
+            } catch (er) {
+                console.log(er);
+                return res.status(500).json({ msg: "Server error" });
+            }
+        });
+
+
+
+        
 
 
 Router.get("/show", async (req, res) => {
