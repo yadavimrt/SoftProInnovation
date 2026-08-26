@@ -12,7 +12,7 @@ app.use(express.json())
 app.use(cors());
 
 //API'S STARTED
-app.use('/api/admin',require('./routes/adminRoutes'));
+app.use('/api/admin', adminRoutes);
 app.use('/api/category', require('./routes/categoryRoutes'));
 app.use('/api/user', require('./routes/userRoutes'));
 

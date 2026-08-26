@@ -15,6 +15,7 @@ import UsersList from './components/UsersList'
 import Inventory from './components/Inventory'
 import Complaints from './components/Complaints'
 
+import AdminLogin from './AdminLogin'
 
 export const App = () => {
   return (
@@ -35,7 +36,9 @@ export const App = () => {
             <Route path='users' element={<UsersList />} />
             <Route path='inventory' element={<Inventory />} />
             <Route path='complaints' element={<Complaints />} />
+          
           </Route>
+           <Route path='/admin/login' element={<AdminLogin/>} />
         </Routes>
       </BrowserRouter>
     </>

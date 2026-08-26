@@ -3,26 +3,26 @@ const Router=express.Router();
 const Admin=require('../model/admin');
 const jwt = require('jsonwebtoken')
 
-Router.post('/regsiter',async(req,res)=>{
+// Router.post('/regsiter',async(req,res)=>{
    
- try{
-        const {name,email,password}=req.body;
+//  try{
+//         const {name,email,password}=req.body;
       
-        const a =await Admin.findOne({email});
-        if(a){
-            return res.json({message:"Admin Already Registered"})
-        }
-          console.log(req.body);
-        const data=await Admin.create(req.body);
-         console.log("data",data)
-         return res.json({"message":"Email  Registered"});
-    }
-catch(error){
-    return res.json({"message":"Email Not Registered"}); 
-}
+//         const a =await Admin.findOne({email});
+//         if(a){
+//             return res.json({message:"Admin Already Registered"})
+//         }
+//           console.log(req.body);
+//         const data=await Admin.create(req.body);
+//          console.log("data",data)
+//          return res.json({"message":"Email  Registered"});
+//     }
+// catch(error){
+//     return res.json({"message":"Email Not Registered"}); 
+// }
 
 
-});
+// });
 
 
 Router.post('/login', async (req, res) => {
