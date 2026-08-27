@@ -1,21 +1,22 @@
 import React from 'react'
-import Home from './Home'
+import Home from './pages/user/Home'
 import { BrowserRouter as Router, Routes, Route, BrowserRouter } from 'react-router-dom'
-import About from './components/About'
-import Contact from './components/Contact'
-import Product from './components/Product'
-import Login from './components/Login'
-import Register from './components/Register'
-import DashboardLayout from './components/DashboardLayout'
-import DashboardOverview from './components/DashboardOverview'
-import Categories from './components/Categories'
-import Products from './components/Products'
-import Orders from './components/Orders'
-import UsersList from './components/UsersList'
-import Inventory from './components/Inventory'
-import Complaints from './components/Complaints'
+import About from './pages/user/About'
+import Contact from './pages/user/Contact'
+import Product from './pages/user/Product'
+import Login from './pages/user/Login'
+import Register from './pages/user/Register'
+import DashboardLayout from './pages/admin/DashboardLayout'
+import DashboardOverview from './pages/admin/DashboardOverview'
+import Categories from './pages/admin/Categories'
+import AddCategory from './pages/admin/AddCategory'
+import Products from './pages/admin/Products'
+import Orders from './pages/admin/Orders'
+import UsersList from './pages/admin/UsersList'
+import Inventory from './pages/admin/Inventory'
+import Complaints from './pages/admin/Complaints'
 
-import AdminLogin from './AdminLogin'
+import AdminLogin from './pages/admin/AdminLogin'
 
 export const App = () => {
   return (
@@ -31,12 +32,14 @@ export const App = () => {
           <Route path='/dashboard' element={<DashboardLayout />}>
             <Route index element={<DashboardOverview />} />
             <Route path='categories' element={<Categories />} />
+            <Route path='categories/add' element={<AddCategory />} />
+            <Route path='add-category' element={<AddCategory />} />
+            <Route path='categories/edit/:id' element={<AddCategory />} />
             <Route path='products' element={<Products />} />
             <Route path='orders' element={<Orders />} />
             <Route path='users' element={<UsersList />} />
             <Route path='inventory' element={<Inventory />} />
             <Route path='complaints' element={<Complaints />} />
-          
           </Route>
            <Route path='/admin/login' element={<AdminLogin/>} />
         </Routes>

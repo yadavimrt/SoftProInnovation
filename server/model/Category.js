@@ -12,9 +12,14 @@ const ctSchema = new mongoose.Schema({
              required:true
          },
     
+    image: {
+        type: String,
+        default: ''
+    },
     status:{
             type:String, 
             enum:["active","inactive","delete"],
+            default: "active"
     },
     timestamps:{
         type:Date,

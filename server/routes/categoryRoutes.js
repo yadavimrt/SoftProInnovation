@@ -1,48 +1,85 @@
-const Category=require('../model/Category');
-const express=require('express');
-const Router=express.Router();
+const Category = require('../model/Category');
+const express = require('express');
+const upload = require('../middleware/upload');
+const path = require('path');
+const fs = require('fs');
+const Router = express.Router();
 
-Router.post('/register',async(req,res)=>{
-   
- try{
-        const {category,description,status}=req.body;
-        const a =await Category.findOne({category});
-        if(a){
-            return res.json({message:"Category Already Registered"})
-        }
-        const data= await new Category({
-            category:category,
-            description:description,
-            status:status
-        });
-         await data.save();
-         return res.json({"message":"Category  Registered"});
-    }
-
-catch(error){
-    return res.json({"message":"Category Not Registered"}); 
-}
-})
-
-Router.get('/show', async (req, res) => {
+Router.post('/register', upload.single('image'), async (req, res) => {
     try {
-        const categories = await Category.find();
-        return res.json(categories);
+        const { category, description, status } = req.body;
+        if (!category || !category.trim()) {
+            return res.status(400).json({ success: false, message: "Category name is required" });
+        }
+        if (!description || !description.trim()) {
+            return res.status(400).json({ success: false, message: "Description is required" });
+        }
+
+        const existingCategory = await Category.findOne({
+            category: { $regex: new RegExp(`^${category.trim()}$`, 'i') }
+        });
+
+        if (existingCategory) {
+            return res.status(400).json({ success: false, message: "Category already exists" });
+        }
+
+        const imagePath = req.file ? `uploads/categories/${req.file.filename}` : '';
+
+        const newCategory = new Category({
+            category: category.trim(),
+            description: description.trim(),
+            image: imagePath,
+            status: status || 'active'
+        });
+
+        await newCategory.save();
+        return res.status(201).json({
+            success: true,
+            message: "Category added successfully",
+            category: newCategory
+        });
     } catch (error) {
-        return res.status(500).json({ message: "Error fetching categories" });
+        return res.status(500).json({
+            success: false,
+            message: "Failed to add category",
+            error: error.message
+        });
     }
 });
 
-Router.put('/update/:id', async (req, res) => {
+Router.get('/show', async (req, res) => {
     try {
+        const categories = await Category.find().sort({ timestamps: -1 });
+        return res.json(categories);
+    } catch (error) {
+        return res.status(500).json({ success: false, message: "Error fetching categories", error: error.message });
+    }
+});
+
+Router.put('/update/:id', upload.single('image'), async (req, res) => {
+    try {
+        const { category, description, status } = req.body;
+        const updateData = {
+            category,
+            description,
+            status
+        };
+
+        if (req.file) {
+            updateData.image = `uploads/categories/${req.file.filename}`;
+        }
+
         const updatedCategory = await Category.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            updateData,
             { new: true }
         );
-        res.json({ message: 'Category updated', category: updatedCategory });
+        if (!updatedCategory) {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+        res.json({ success: true, message: 'Category updated successfully', category: updatedCategory });
     } catch (error) {
-        res.status(500).json({ message: "Error updating category", error: error.message });
+        res.status(500).json({ success: false, message: "Error updating category", error: error.message });
     }
 });
 
@@ -53,19 +90,25 @@ Router.patch('/patch/:id', async (req, res) => {
             req.body,
             { new: true }
         );
-        res.json({ message: 'Category patched', category: updatedCategory });
+        if (!updatedCategory) {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+        res.json({ success: true, message: 'Category patched successfully', category: updatedCategory });
     } catch (error) {
-        res.status(500).json({ message: "Error patching category", error: error.message });
+        res.status(500).json({ success: false, message: "Error patching category", error: error.message });
     }
 });
 
 Router.delete('/delete/:id', async (req, res) => {
     try {
-        await Category.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Category deleted' });
+        const deleted = await Category.findByIdAndDelete(req.params.id);
+        if (!deleted) {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+        res.json({ success: true, message: 'Category deleted successfully' });
     } catch (error) {
-        res.status(500).json({ message: "Error deleting category", error: error.message });
+        res.status(500).json({ success: false, message: "Error deleting category", error: error.message });
     }
 });
 
-module.exports=Router;
+module.exports = Router;
