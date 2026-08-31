@@ -38,8 +38,8 @@ const WhyChooseUs = () => {
     <section className="py-5" style={{ backgroundColor: '#f8f9fa' }}>
       <div className="container">
         <div className="text-center mb-5">
-          <h2 className="fw-bold" style={{ color: '#1e3a8a' }}>Why Makers Choose Us</h2>
-          <div className="mx-auto mt-2" style={{ width: '60px', height: '3px', backgroundColor: '#ff4500' }}></div>
+          <h2 className="fw-bold" style={{ color: '#0f172a' }}>Why Makers Choose Us</h2>
+          <div className="mx-auto mt-2" style={{ width: '50px', height: '3px', backgroundColor: '#2563eb', borderRadius: '2px' }}></div>
         </div>
         <div className="row g-4 justify-content-center">
           {features.map((feature, index) => (

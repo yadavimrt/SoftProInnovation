@@ -1,12 +1,21 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+import logo from '../../assets/logo.png'
 
 const AdminLogin = () => {
     const navigate = useNavigate()
     const [data, setData] = useState({ email: '', password: '' })
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState('')
+
+    useEffect(() => {
+        const token = localStorage.getItem('token')
+        const role = localStorage.getItem('role')
+        if (token && role === 'admin') {
+            navigate('/dashboard', { replace: true })
+        }
+    }, [navigate])
 
     const handleChange = (e) => {
         setData((currentData) => ({ ...currentData, [e.target.name]: e.target.value }))
@@ -39,7 +48,9 @@ const AdminLogin = () => {
     return (
         <main className="admin-login-page">
             <section className="admin-login-panel" aria-labelledby="admin-login-title">
-                <div className="admin-login-mark" aria-hidden="true">SP</div>
+                <div className="admin-login-mark d-flex align-items-center justify-content-center" aria-hidden="true" style={{ background: '#0b0e4a' }}>
+                    <img src={logo} alt="Softpro" width="28" height="28" style={{ objectFit: 'contain' }} />
+                </div>
                 <p className="admin-login-eyebrow">SoftPro Innovation</p>
                 <h1 id="admin-login-title">Admin portal</h1>
                 <p className="admin-login-intro">Sign in to manage your store, orders, and customers.</p>

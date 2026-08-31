@@ -1,22 +1,61 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
 
 const Register = () => {
+  const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Registering user:', { fullName, mobileNumber, email, password, agreedTerms });
+    setError('');
+    setSuccess('');
+
+    if (!agreedTerms) {
+      setError('Please accept the Terms & Conditions and Privacy Policy');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await axios.post('http://localhost:5000/api/user/register', {
+        name: fullName.trim(),
+        mobile: mobileNumber.trim(),
+        email: email.trim(),
+        password: password
+      });
+
+      if (response.data.success) {
+        setSuccess(response.data.message || 'Registration successful! Redirecting to login...');
+        setTimeout(() => {
+          navigate('/login');
+        }, 1500);
+      } else {
+        setError(response.data.message || 'Registration failed');
+      }
+    } catch (err) {
+      console.error('Registration error:', err);
+      setError(err.response?.data?.message || 'Server error. Please check if the server is running.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="login-page-wrapper d-flex flex-column align-items-center justify-content-center py-5">
+    <>
+      <Header />
+      <div className="login-page-wrapper d-flex flex-column align-items-center justify-content-center py-5">
         {/* Main Register Card */}
         <div className="login-card-container" style={{ maxWidth: '540px' }}>
           <div className="login-card p-4 p-sm-5">
@@ -27,6 +66,20 @@ const Register = () => {
               </h1>
               <p className="login-subtitle">Join thousands of makers &mdash; it's free and takes 30 seconds</p>
             </div>
+
+            {/* Error & Success Alerts */}
+            {error && (
+              <div className="alert alert-danger py-2 px-3 text-start small mb-3" role="alert">
+                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="alert alert-success py-2 px-3 text-start small mb-3" role="alert">
+                <i className="bi bi-check-circle-fill me-2"></i>
+                {success}
+              </div>
+            )}
 
             {/* Register Form */}
             <form onSubmit={handleSubmit}>
@@ -90,10 +143,10 @@ const Register = () => {
                     id="passwordInput"
                     type={showPassword ? 'text' : 'password'}
                     className="form-control login-input"
-                    placeholder="Minimum 8 characters"
+                    placeholder="Minimum 6 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    minLength={8}
+                    minLength={6}
                     required
                   />
                   <i
@@ -123,8 +176,20 @@ const Register = () => {
               </div>
 
               {/* Create Account Button */}
-              <button type="submit" className="btn btn-orangered-about w-100 py-3 rounded-3 font-weight-bold mb-4" style={{ fontSize: '16px' }}>
-                Create Account
+              <button 
+                type="submit" 
+                className="btn btn-orangered-about w-100 py-3 rounded-3 font-weight-bold mb-4" 
+                style={{ fontSize: '16px' }}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Creating Account...
+                  </>
+                ) : (
+                  'Create Account'
+                )}
               </button>
 
               {/* Divider */}
@@ -145,8 +210,8 @@ const Register = () => {
           </div>
         </div>
       </div>
-  
-  
+      <Footer />
+    </>
   );
 };
 

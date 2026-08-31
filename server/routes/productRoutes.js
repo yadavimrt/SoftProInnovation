@@ -62,8 +62,9 @@ Router.post('/register', uploadFields, async (req, res) => {
         if (refund_days === undefined || refund_days === null || refund_days === '') {
             return res.status(400).json({ success: false, message: "Refund days is required" });
         }
-        if (!category_id) {
-            return res.status(400).json({ success: false, message: "Category ID is required" });
+        const categoryId = category_id || req.body.category;
+        if (!categoryId) {
+            return res.status(400).json({ success: false, message: "Category is required" });
         }
         if (height === undefined || height === null || height === '') {
             return res.status(400).json({ success: false, message: "Height is required" });
@@ -127,7 +128,7 @@ Router.post('/register', uploadFields, async (req, res) => {
             isreplaceable: isreplaceable === true || isreplaceable === 'true',
             images: imagesList,
             thumbnail: thumbnailPath,
-            category_id,
+            category_id: categoryId,
             tags: parsedTags,
             height: Number(height),
             width: Number(width),
@@ -146,7 +147,7 @@ Router.post('/register', uploadFields, async (req, res) => {
         console.error("Error adding product:", error);
         return res.status(500).json({
             success: false,
-            message: "Failed to add product",
+            message: error.message || "Failed to add product",
             error: error.message
         });
     }
@@ -200,6 +201,10 @@ Router.put('/update/:id', uploadFields, async (req, res) => {
         }
 
         const updateData = { ...req.body };
+        if (updateData.category) {
+            updateData.category_id = updateData.category;
+            delete updateData.category;
+        }
 
         // Handle numeric fields conversion if present
         if (updateData.price !== undefined) updateData.price = Number(updateData.price);
@@ -274,9 +279,15 @@ Router.put('/update/:id', uploadFields, async (req, res) => {
 // 5. PATCH PRODUCT (PATCH)
 Router.patch('/patch/:id', async (req, res) => {
     try {
+        const updateData = { ...req.body };
+        if (updateData.category) {
+            updateData.category_id = updateData.category;
+            delete updateData.category;
+        }
+
         const updatedProduct = await Product.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            updateData,
             { new: true }
         ).populate('category_id', 'category description image status');
 

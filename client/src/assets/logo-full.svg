@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 70" fill="none">
+  <!-- Softpro 4-quadrant emblem -->
+  <g transform="translate(10, 8) scale(0.85)">
+    <!-- Top-Left Tile -->
+    <path d="M12 5 L36 5 L36 32 C26 31 16 23 12 5 Z" fill="#ffffff"/>
+    <!-- Top-Right Tile -->
+    <path d="M42 2 L62 2 L56 31 L38 31 Z" fill="#ffffff"/>
+    <!-- Bottom-Left Tile -->
+    <path d="M6 35 L26 35 L20 62 L0 62 Z" fill="#ffffff"/>
+    <!-- Bottom-Right Tile -->
+    <path d="M30 35 C42 35 52 46 54 62 L30 62 Z" fill="#ffffff"/>
+  </g>
+  
+  <!-- Softpro Text -->
+  <text x="75" y="46" fill="#ffffff" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="34" font-weight="900" font-style="italic" letter-spacing="-0.5">
+    Softpro
+  </text>
+  
+  <!-- Innovation Text -->
+  <text x="215" y="46" fill="#38bdf8" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="-0.2">
+    Innovation
+  </text>
+</svg>

@@ -49,7 +49,33 @@ Router.post('/register', upload.single('image'), async (req, res) => {
 
 Router.get('/show', async (req, res) => {
     try {
-        const categories = await Category.find().sort({ timestamps: -1 });
+        const matchStage = {};
+        if (req.query.status && req.query.status !== 'all') {
+            matchStage.status = req.query.status;
+        }
+
+        const categories = await Category.aggregate([
+            ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
+            { $sort: { timestamps: -1 } },
+            {
+                $lookup: {
+                    from: 'products',
+                    localField: '_id',
+                    foreignField: 'category_id',
+                    as: 'products'
+                }
+            },
+            {
+                $addFields: {
+                    productCount: { $size: '$products' }
+                }
+            },
+            {
+                $project: {
+                    products: 0
+                }
+            }
+        ]);
         return res.json(categories);
     } catch (error) {
         return res.status(500).json({ success: false, message: "Error fetching categories", error: error.message });

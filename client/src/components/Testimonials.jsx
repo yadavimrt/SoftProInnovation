@@ -46,15 +46,15 @@ const Testimonials = () => {
         {/* Stats Row */}
         <div className="row text-center mb-5 justify-content-center">
           <div className="col-12 col-md-3 mb-3 mb-md-0">
-            <h3 className="fw-bold mb-1" style={{ color: '#1e3a8a' }}>4.8/5</h3>
+            <h3 className="fw-bold mb-1" style={{ color: '#2563eb' }}>4.8/5</h3>
             <p className="text-muted mb-0 small text-uppercase fw-semibold">Average Rating</p>
           </div>
           <div className="col-12 col-md-3 mb-3 mb-md-0">
-            <h3 className="fw-bold mb-1" style={{ color: '#1e3a8a' }}>2,500+</h3>
+            <h3 className="fw-bold mb-1" style={{ color: '#2563eb' }}>2,500+</h3>
             <p className="text-muted mb-0 small text-uppercase fw-semibold">Happy Customers</p>
           </div>
           <div className="col-12 col-md-3">
-            <h3 className="fw-bold mb-1" style={{ color: '#1e3a8a' }}>10,000+</h3>
+            <h3 className="fw-bold mb-1" style={{ color: '#2563eb' }}>10,000+</h3>
             <p className="text-muted mb-0 small text-uppercase fw-semibold">Orders</p>
           </div>
         </div>
@@ -66,11 +66,11 @@ const Testimonials = () => {
               <div className="testimonial-card h-100 p-4 rounded-4 bg-white shadow-sm d-flex flex-column justify-content-between">
                 <div>
                   {/* Quote Icon */}
-                  <div className="quote-mark mb-1" style={{ color: '#3945E0', fontSize: '28px', fontFamily: 'Georgia, serif', lineHeight: '1' }}>
+                  <div className="quote-mark mb-1" style={{ color: '#2563eb', fontSize: '28px', fontFamily: 'Georgia, serif', lineHeight: '1' }}>
                     “
                   </div>
                   {/* Star Rating */}
-                  <div className="stars-rating mb-3" style={{ color: '#3945E0', fontSize: '15px' }}>
+                  <div className="stars-rating mb-3" style={{ color: '#f59e0b', fontSize: '15px' }}>
                     {'★'.repeat(item.stars)}
                     {'☆'.repeat(5 - item.stars)}
                   </div>
@@ -84,12 +84,12 @@ const Testimonials = () => {
                 <div className="d-flex align-items-center gap-3 mt-auto">
                   <div
                     className="avatar-circle rounded-circle d-flex align-items-center justify-content-center fw-bold text-white shadow-sm flex-shrink-0"
-                    style={{ width: '46px', height: '46px', backgroundColor: '#3945E0', fontSize: '14px' }}
+                    style={{ width: '44px', height: '44px', backgroundColor: '#2563eb', fontSize: '14px' }}
                   >
                     {item.initials}
                   </div>
                   <div>
-                    <h6 className="mb-0 fw-bold text-dark" style={{ fontFamily: 'Georgia, serif', fontSize: '15px' }}>
+                    <h6 className="mb-0 fw-bold text-dark" style={{ fontSize: '14.5px' }}>
                       {item.name}
                     </h6>
                     <small className="text-muted" style={{ fontSize: '12px' }}>

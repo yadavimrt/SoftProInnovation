@@ -1,7 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap');
 
 body {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
   background-color: #f8fafc;
 }
 
@@ -154,55 +154,68 @@ body {
 }
 
 .text-orangered{
-  color:#3945E0;
+  color: #2563eb;
 }
 
 .btn-orangered {
-  background-color: #3945E0 !important;
+  background-color: #2563eb !important;
   color: white !important;
-  border: 1px solid #3945E0 !important;
+  border: 1px solid #2563eb !important;
   border-radius: 8px !important;
   padding: 6px 16px !important;
   transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1) !important;
 }
 .btn-orangered:hover {
-  background-color: #2E36B3 !important;
-  border: 1px solid #2E36B3 !important;
+  background-color: #1d4ed8 !important;
+  border: 1px solid #1d4ed8 !important;
   color: white !important;
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(57, 69, 224, 0.55) !important;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4) !important;
 }
 
 .btn-outline-orangered {
-  border: 1px solid #dcdcdc !important;
-  background-color: #f1f1f1 !important;
-  color: black !important;
+  border: 1px solid #e2e8f0 !important;
+  background-color: #ffffff !important;
+  color: #1e293b !important;
   border-radius: 8px !important;
   padding: 6px 16px !important;
   transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1) !important;
 }
 .btn-outline-orangered:hover {
-  border: 1px solid #3945E0 !important;
-  background-color: #3945E0 !important;
+  border: 1px solid #2563eb !important;
+  background-color: #2563eb !important;
   color: white !important;
   transform: translateY(-2px);
 }
 
-.nav-link {
-  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1) !important;
+.navbar .nav-link {
+  color: #ffffff !important;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.3px;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1) !important;
+  opacity: 0.95;
 }
 
-.nav-link:hover {
-  color: #3945E0 !important;
+.navbar .nav-link:hover {
+  color: #38bdf8 !important;
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
 }
 
-.nav-link.active {
-  color: #3945E0 !important;
-  border-bottom: 2px solid #3945E0;
+.navbar .nav-link.active {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.2);
+  font-weight: 600 !important;
+  opacity: 1;
+
 }
 
 .navbar-brand span {
-  color: #3945E0;
+  color: #ffffff;
 }
 
 /* hero section start */
@@ -217,14 +230,14 @@ body {
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(20, 16, 38, 0.88) 0%, rgba(20, 16, 38, 0.65) 45%, rgba(57, 69, 224, 0.45) 100%);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.58) 0%, rgba(30, 58, 138, 0.38) 45%, rgba(37, 99, 235, 0.22) 100%);
 }
 
 .badge-new {
   display: inline-block;
-  border: 1px solid rgba(57, 69, 224, 0.65);
-  background-color: rgba(57, 69, 224, 0.16);
-  color: #3945E0;
+  border: 1px solid rgba(37, 99, 235, 0.5);
+  background-color: rgba(37, 99, 235, 0.15);
+  color: #60a5fa;
   padding: 6px 18px;
   border-radius: 20px;
   font-size: 11.5px;
@@ -246,7 +259,7 @@ body {
   font-size: 16px;
   line-height: 1.6;
   max-width: 580px;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(238, 234, 234, 0.85);
   position: relative;
 }
 

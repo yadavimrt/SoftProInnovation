@@ -14,7 +14,7 @@ const Newsletter = () => {
   };
 
   return (
-    <section className="newsletter-section py-5" style={{ backgroundColor: '#f2f0ed' }}>
+    <section className="newsletter-section py-5" style={{ backgroundColor: '#f8fafc' }}>
       <div className="container">
         <div className="newsletter-card position-relative overflow-hidden p-4 p-md-5">
           {/* Decorative Background Circles on the right */}

@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import axios from 'axios'
 
 import img1 from '../../assets/1.avif'
 import img2 from '../../assets/2.png'
@@ -60,10 +61,35 @@ const categories = [
 ]
 
 const Product = () => {
-  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const categoryFromUrl = searchParams.get('category')
+  const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl || 'All')
+  const [categoryList, setCategoryList] = useState(categories)
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('Featured')
   const [hoveredCard, setHoveredCard] = useState(null)
+
+  useEffect(() => {
+    if (categoryFromUrl) {
+      setSelectedCategory(categoryFromUrl)
+    }
+  }, [categoryFromUrl])
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/category/show?status=active')
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          const names = res.data.map(c => c.category || c.name).filter(Boolean)
+          const merged = ['All', ...new Set([...names, ...categories.filter(c => c !== 'All')])]
+          setCategoryList(merged)
+        }
+      } catch (e) {
+        // use fallback categories
+      }
+    }
+    fetchCategories()
+  }, [])
 
   // Filter & Sort Logic
   const filteredProducts = useMemo(() => {
@@ -71,7 +97,9 @@ const Product = () => {
       .filter((item) => {
         const matchesCategory =
           selectedCategory === 'All' ||
-          item.category.toLowerCase() === selectedCategory.toLowerCase()
+          item.category.toLowerCase().trim() === selectedCategory.toLowerCase().trim() ||
+          item.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+          selectedCategory.toLowerCase().includes(item.category.toLowerCase())
         const matchesSearch =
           item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.category.toLowerCase().includes(searchTerm.toLowerCase())
@@ -150,11 +178,11 @@ const Product = () => {
 
           {/* Category Filter Pills Bar */}
           <div className="d-flex flex-wrap gap-2 mb-4 align-items-center">
-            {categories.map((cat) => (
+            {categoryList.map((cat) => (
               <button
                 key={cat}
                 type="button"
-                className={`btn category-pill-btn ${selectedCategory === cat ? 'active' : ''}`}
+                className={`btn category-pill-btn ${selectedCategory.toLowerCase() === cat.toLowerCase() ? 'active' : ''}`}
                 onClick={() => setSelectedCategory(cat)}
               >
                 {cat}

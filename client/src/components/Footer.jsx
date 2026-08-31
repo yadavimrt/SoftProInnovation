@@ -3,16 +3,16 @@ import logo from '../assets/logo.png';
 
 const Footer = () => {
   return (
-    <footer className="footer-section text-white pt-5 pb-4" style={{ backgroundColor: '#1e3a8a' }}>
+    <footer className="footer-section text-white pt-5 pb-4" style={{ backgroundColor: '#1e293b' }}>
       <div className="container">
         {/* Main Footer Links Grid */}
         <div className="row g-4 pb-5 border-bottom border-secondary border-opacity-25">
           {/* Column 1: Brand Info */}
           <div className="col-12 col-lg-3 me-auto">
             <a href="#" className="d-flex align-items-center text-decoration-none mb-3">
-              <img src={logo} alt="SPI Logo" width="40" className="me-2" style={{ objectFit: 'contain', filter: 'invert(1) hue-rotate(39deg)', mixBlendMode: 'screen' }} />
-              <span className="fs-4 fw-bold text-white" style={{ fontFamily: 'Georgia, serif' }}>
-                Softpro<span style={{ color: '#3945E0' }}>Innovation</span>
+              <img src={logo} alt="Softpro Innovation Logo" width="36" height="36" className="me-2" style={{ objectFit: 'contain' }} />
+              <span className="fs-4 fw-bold text-white">
+                Softpro<span className="ms-1" style={{ color: '#38bdf8' }}>Innovation</span>
               </span>
             </a>
             <p className="footer-text mb-4" style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: '14px', lineHeight: '1.6' }}>

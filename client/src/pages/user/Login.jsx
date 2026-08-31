@@ -1,17 +1,51 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 
 const Login = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Logging in with:', { email, password, rememberMe });
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const response = await axios.post('http://localhost:5000/api/user/login', {
+        email: email.trim(),
+        password: password
+      });
+
+      if (response.data.success) {
+        setSuccess('Login successful! Redirecting...');
+        // Save user session in localStorage
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('role', response.data.role || 'user');
+        localStorage.setItem('name', response.data.name || response.data.user?.name);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+
+        setTimeout(() => {
+          navigate('/');
+        }, 1000);
+      } else {
+        setError(response.data.message || 'Login failed');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError(err.response?.data?.message || 'Invalid email or password / Server error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -28,6 +62,20 @@ const Login = () => {
               </h1>
               <p className="login-subtitle">Sign in to your account to continue shopping</p>
             </div>
+
+            {/* Error & Success Alerts */}
+            {error && (
+              <div className="alert alert-danger py-2 px-3 text-start small mb-3" role="alert">
+                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="alert alert-success py-2 px-3 text-start small mb-3" role="alert">
+                <i className="bi bi-check-circle-fill me-2"></i>
+                {success}
+              </div>
+            )}
 
             {/* Login Form */}
             <form onSubmit={handleSubmit}>
@@ -89,8 +137,20 @@ const Login = () => {
               </div>
 
               {/* Sign In Button */}
-              <button type="submit" className="btn btn-orangered-about w-100 py-3 rounded-3 font-weight-bold mb-4" style={{ fontSize: '16px' }}>
-                Sign In
+              <button 
+                type="submit" 
+                className="btn btn-orangered-about w-100 py-3 rounded-3 font-weight-bold mb-4" 
+                style={{ fontSize: '16px' }}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Signing In...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
               </button>
 
               {/* Or Divider */}
