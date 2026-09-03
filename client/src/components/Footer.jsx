@@ -116,7 +116,7 @@ const Footer = () => {
             &copy; 2026 SoftproInnovation. All rights reserved.
           </p>
           <p className="mb-0">
-            Design &amp; Development by Softpro India Computer Technology Pvt. Ltd
+            Designed &amp; Developed by Softpro India Computer Technology Pvt. Ltd
           </p>
         </div>
       </div>

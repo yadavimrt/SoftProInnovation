@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
+import logo from '../../assets/logo.png';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -53,11 +52,17 @@ const Register = () => {
   };
 
   return (
-    <>
-      <Header />
-      <div className="login-page-wrapper d-flex flex-column align-items-center justify-content-center py-5">
-        {/* Main Register Card */}
-        <div className="login-card-container" style={{ maxWidth: '540px' }}>
+    <div className="login-page-wrapper d-flex flex-column align-items-center justify-content-center py-5" style={{ minHeight: '100vh', backgroundColor: '#f4f7fb' }}>
+      {/* Brand Logo Header */}
+      <div className="text-center mb-4">
+        <Link to="/" className="d-inline-flex align-items-center text-decoration-none">
+          <img src={logo} alt="Softpro" width="36" height="36" className="me-2" style={{ objectFit: 'contain' }} />
+          <span className="fs-4 fw-bold text-dark">Softpro<span style={{ color: '#3945E0' }}>Innovation</span></span>
+        </Link>
+      </div>
+
+      {/* Main Register Card */}
+      <div className="login-card-container" style={{ maxWidth: '540px' }}>
           <div className="login-card p-4 p-sm-5">
             {/* Card Header */}
             <div className="login-card-header text-start mb-4">
@@ -210,8 +215,6 @@ const Register = () => {
           </div>
         </div>
       </div>
-      <Footer />
-    </>
   );
 };
 

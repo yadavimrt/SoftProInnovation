@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useCart } from '../context/CartContext';
 
 import img12 from '../assets/12.png';
 import img13 from '../assets/13.png';
@@ -101,7 +102,7 @@ const fallbackProducts = [
     thumbnail: img18,
     images: [img18, img19],
     rating: 4.7,
-    reviews: 112,
+    reviews: 95,
   },
   {
     _id: '8',
@@ -119,12 +120,14 @@ const fallbackProducts = [
 ];
 
 const FeaturedProducts = () => {
+  const navigate = useNavigate();
+  const { addToCart, buyNow, toggleWishlist, isInWishlist } = useCart();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [favorites, setFavorites] = useState({});
   const [cardImageIndexMap, setCardImageIndexMap] = useState({}); // { [productId]: currentImageIndex }
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [quickViewIdx, setQuickViewIdx] = useState(0);
+  const [modalQty, setModalQty] = useState(1);
 
   const formatImg = (imgPath) => {
     if (!imgPath) return '';
@@ -318,13 +321,14 @@ const FeaturedProducts = () => {
                       }}
                       onClick={(e) => {
                         e.preventDefault();
-                        toggleFavorite(id);
+                        e.stopPropagation();
+                        toggleWishlist(item);
                       }}
-                      title="Add to Wishlist"
+                      title={isInWishlist(id) ? "Remove from Wishlist" : "Add to Wishlist"}
                     >
                       <i
                         className={`bi ${
-                          favorites[id] ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'
+                          isInWishlist(id) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'
                         } fs-6`}
                       ></i>
                     </button>
@@ -444,7 +448,7 @@ const FeaturedProducts = () => {
                     </div>
 
                     {/* Content Section */}
-                    <div className="card-body p-3 p-lg-4 d-flex flex-column bg-white">
+                    <div className="card-body p-3 p-lg-4 d-flex flex-column bg-white text-start">
                       {/* Category */}
                       <span
                         className="text-uppercase fw-bold text-muted mb-1"
@@ -516,44 +520,28 @@ const FeaturedProducts = () => {
                       {/* Action Buttons */}
                       <div className="d-flex gap-2 w-100 mt-auto">
                         <button
-                          className="btn flex-grow-1 btn-sm py-2 fw-semibold rounded-2 d-flex justify-content-center align-items-center gap-1"
+                          type="button"
+                          className="btn btn-outline-primary flex-grow-1 btn-sm py-2 fw-semibold rounded-2"
                           disabled={!inStock}
-                          style={{
-                            fontSize: '13px',
-                            color: '#ff4500',
-                            border: '1px solid #ff4500',
-                            backgroundColor: 'transparent',
-                            transition: 'all 0.2s',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#ff4500';
-                            e.currentTarget.style.color = 'white';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.color = '#ff4500';
+                          style={{ fontSize: '12px' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart(item);
                           }}
                         >
-                          <i className="bi bi-cart-plus fs-6"></i> Add
+                          <i className="bi bi-cart-plus me-1"></i> Add to Cart
                         </button>
                         <button
-                          className="btn flex-grow-1 btn-sm py-2 fw-semibold rounded-2"
+                          type="button"
+                          className="btn flex-grow-1 btn-sm py-2 fw-semibold rounded-2 text-white"
                           disabled={!inStock}
-                          style={{
-                            fontSize: '13px',
-                            backgroundColor: '#ff4500',
-                            color: 'white',
-                            border: '1px solid #ff4500',
-                            transition: 'all 0.2s',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#e03e00';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#ff4500';
+                          style={{ fontSize: '12px', backgroundColor: '#ff4500', border: 'none' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            buyNow(item, 1, navigate);
                           }}
                         >
-                          Buy Now
+                          <i className="bi bi-lightning-fill me-1"></i> Buy Now
                         </button>
                       </div>
                     </div>
@@ -737,14 +725,67 @@ const FeaturedProducts = () => {
                           </span>
                         </div>
 
+                        {/* Quantity Selector & Action Buttons */}
+                        <div className="d-flex align-items-center gap-3 mb-3">
+                          <span className="fw-semibold text-muted small">Quantity:</span>
+                          <div className="input-group input-group-sm" style={{ width: '110px' }}>
+                            <button
+                              className="btn btn-outline-secondary"
+                              type="button"
+                              onClick={() => setModalQty((q) => Math.max(1, q - 1))}
+                            >
+                              -
+                            </button>
+                            <input
+                              type="text"
+                              className="form-control text-center bg-white"
+                              value={modalQty}
+                              readOnly
+                            />
+                            <button
+                              className="btn btn-outline-secondary"
+                              type="button"
+                              onClick={() => setModalQty((q) => q + 1)}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
                         <div className="mt-auto d-flex gap-2">
-                          <Link
-                            to={`/product`}
-                            className="btn btn-primary flex-grow-1 py-2 fw-semibold rounded-3 text-decoration-none text-center"
-                            style={{ backgroundColor: '#3945E0', border: 'none' }}
+                          <button
+                            type="button"
+                            className="btn btn-outline-primary flex-grow-1 py-2 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5"
+                            onClick={() => {
+                              addToCart(quickViewProduct, modalQty);
+                            }}
                           >
-                            View Full Product Details
-                          </Link>
+                            <i className="bi bi-cart-plus fs-6"></i> Add to Cart
+                          </button>
+
+                          <button
+                            type="button"
+                            className="btn flex-grow-1 py-2 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5 text-white shadow-sm"
+                            style={{ backgroundColor: '#ff4500', border: 'none' }}
+                            onClick={() => {
+                              buyNow(quickViewProduct, modalQty, navigate);
+                              closeQuickView();
+                            }}
+                          >
+                            <i className="bi bi-lightning-fill fs-6"></i> Buy Now
+                          </button>
+
+                          <button
+                            type="button"
+                            className="btn p-2 border rounded-3 d-flex align-items-center justify-content-center"
+                            style={{ width: '42px', borderColor: '#e2e8f0', backgroundColor: '#f8fafc' }}
+                            onClick={() => {
+                              toggleWishlist(quickViewProduct);
+                            }}
+                            title={isInWishlist(quickViewProduct._id || quickViewProduct.id) ? "Remove from Wishlist" : "Add to Wishlist"}
+                          >
+                            <i className={`bi ${isInWishlist(quickViewProduct._id || quickViewProduct.id) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'} fs-5`}></i>
+                          </button>
                         </div>
                       </div>
                     </div>

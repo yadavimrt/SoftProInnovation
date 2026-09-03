@@ -305,7 +305,7 @@ const Products = () => {
           <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
               <tr>
-                <th style={{ width: '4%' }} className="text-center">#</th>
+                <th style={{ width: '4%' }} className="text-center">S.No</th>
                 <th style={{ width: '8%' }}>Thumbnail</th>
                 <th style={{ width: '26%' }}>Product Details</th>
                 <th style={{ width: '13%' }}>Category</th>
@@ -358,11 +358,10 @@ const Products = () => {
                       {/* Thumbnail */}
                       <td>
                         <div
-                          className="position-relative d-flex align-items-center justify-content-center bg-light border rounded-3 p-1 shadow-xs"
+                          className="d-flex align-items-center justify-content-center bg-white border rounded-3 p-1 shadow-xs"
                           style={{
-                            width: '56px',
-                            height: '56px',
-                            backgroundColor: '#f8fafc',
+                            width: '52px',
+                            height: '52px',
                             borderColor: '#e2e8f0',
                             overflow: 'hidden',
                           }}
@@ -371,27 +370,19 @@ const Products = () => {
                             <img
                               src={thumbUrl}
                               alt={prod.name}
-                              className="img-fluid"
                               style={{
                                 width: '100%',
                                 height: '100%',
                                 objectFit: 'contain',
+                                display: 'block',
                               }}
                               onError={(e) => {
-                                e.target.style.display = 'none';
+                                e.target.onerror = null;
+                                e.target.src = 'https://placehold.co/100x100?text=No+Img';
                               }}
                             />
                           ) : (
                             <i className="bi bi-box-seam text-secondary opacity-50 fs-4"></i>
-                          )}
-                          {prod.is_feature && (
-                            <span
-                              className="position-absolute top-0 start-0 m-1 badge rounded-pill bg-warning text-dark p-1 shadow-xs"
-                              title="Featured Product"
-                              style={{ fontSize: '8px', lineHeight: 1 }}
-                            >
-                              <i className="bi bi-star-fill"></i>
-                            </span>
                           )}
                         </div>
                       </td>

@@ -66,7 +66,7 @@ const Testimonials = () => {
               <div className="testimonial-card h-100 p-4 rounded-4 bg-white shadow-sm d-flex flex-column justify-content-between">
                 <div>
                   {/* Quote Icon */}
-                  <div className="quote-mark mb-1" style={{ color: '#2563eb', fontSize: '28px', fontFamily: 'Georgia, serif', lineHeight: '1' }}>
+                  <div className="quote-mark mb-1" style={{ color: '#2563eb', fontSize: '28px', lineHeight: '1' }}>
                     “
                   </div>
                   {/* Star Rating */}
@@ -75,7 +75,7 @@ const Testimonials = () => {
                     {'☆'.repeat(5 - item.stars)}
                   </div>
                   {/* Review Text */}
-                  <p className="review-text text-secondary mb-4" style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '14.5px', lineHeight: '1.65' }}>
+                  <p className="review-text text-secondary mb-4" style={{ fontStyle: 'italic', fontSize: '14.5px', lineHeight: '1.65' }}>
                     {item.quote}
                   </p>
                 </div>

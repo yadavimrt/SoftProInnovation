@@ -18,7 +18,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/category', require('./routes/categoryRoutes'));
 app.use('/api/user', require('./routes/userRoutes'));
 app.use('/api/product', require('./routes/productRoutes'));
+app.use('/api/cart', require('./routes/cartRoutes'));
+app.use('/api/address', require('./routes/addressRoutes'));
 
+// STATIC FILES
+app.use('/',express.static(path.join(__dirname,'uploads')));
 app.listen(process.env.PORT , () => {
     console.log(`Server is running on port ${process.env.PORT || 5000}`);
 });

@@ -127,7 +127,7 @@
 }
 
 .dashboard-header-title {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 32px;
   font-weight: 700;
   color: #1a1a2e;
@@ -181,7 +181,7 @@
 }
 
 .stat-value {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 38px;
   font-weight: 700;
   color: #0f172a;
@@ -207,11 +207,11 @@
   padding: 30px;
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(0,0,0,0.03);
-  height: 100%;
+  min-height: auto;
 }
 
 .section-title {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 18px;
   font-weight: 600;
   color: #1e293b;

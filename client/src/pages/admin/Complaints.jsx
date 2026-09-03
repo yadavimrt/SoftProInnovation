@@ -1,65 +1,106 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const Complaints = () => {
+  const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const fetchComplaints = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get('http://localhost:5000/api/complaint/show').catch(() => ({ data: [] }));
+        if (Array.isArray(res.data)) {
+          setComplaints(res.data);
+        } else {
+          setComplaints([]);
+        }
+      } catch (err) {
+        setComplaints([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchComplaints();
+  }, []);
+
+  const filtered = complaints.filter(c => {
+    const term = searchTerm.toLowerCase().trim();
+    const sub = (c.subject || '').toLowerCase();
+    const name = (c.name || c.user?.name || '').toLowerCase();
+    return !term || sub.includes(term) || name.includes(term);
+  });
+
   return (
     <>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="dashboard-header-title mb-0">
-          Customer <span>Complaints</span>
-        </h1>
-        <button className="btn btn-outline-secondary">
-          <i className="bi bi-funnel me-1"></i> Filter Unresolved
-        </button>
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+          <h1 className="dashboard-header-title mb-1">
+            Customer <span>Complaints & Inquiries</span>
+          </h1>
+          <p className="dashboard-subtitle mb-0">
+            View customer support requests, feedback, and issue tickets
+          </p>
+        </div>
       </div>
       
-      <div className="dashboard-section p-4">
+      <div className="dashboard-section p-4" style={{ borderRadius: '18px' }}>
         <div className="table-responsive">
-          <table className="table table-hover align-middle">
+          <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
               <tr>
-                <th>Ticket ID</th>
-                <th>Customer</th>
-                <th>Subject</th>
-                <th>Date</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th style={{ width: '6%' }} className="text-center">S.No</th>
+                <th style={{ width: '16%' }}>Ticket ID</th>
+                <th style={{ width: '22%' }}>Customer</th>
+                <th style={{ width: '28%' }}>Subject</th>
+                <th style={{ width: '14%' }}>Status</th>
+                <th style={{ width: '14%' }} className="text-end">Action</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><strong>#TKT-890</strong></td>
-                <td>Rahul Sharma</td>
-                <td>Order #ORD-9083 delayed</td>
-                <td>Oct 25, 2026</td>
-                <td><span className="badge bg-danger">High</span></td>
-                <td><span className="badge bg-warning text-dark">Open</span></td>
-                <td>
-                  <button className="btn btn-sm btn-primary" style={{ backgroundColor: '#3945E0', border: 'none' }}>Respond</button>
-                </td>
-              </tr>
-              <tr>
-                <td><strong>#TKT-891</strong></td>
-                <td>Priya Singh</td>
-                <td>Received wrong sensor module</td>
-                <td>Oct 25, 2026</td>
-                <td><span className="badge bg-warning text-dark">Medium</span></td>
-                <td><span className="badge bg-warning text-dark">Open</span></td>
-                <td>
-                  <button className="btn btn-sm btn-primary" style={{ backgroundColor: '#3945E0', border: 'none' }}>Respond</button>
-                </td>
-              </tr>
-              <tr>
-                <td><strong>#TKT-885</strong></td>
-                <td>Vikram Singh</td>
-                <td>Invoice request for bulk order</td>
-                <td>Oct 22, 2026</td>
-                <td><span className="badge bg-info text-dark">Low</span></td>
-                <td><span className="badge bg-success">Resolved</span></td>
-                <td>
-                  <button className="btn btn-sm btn-outline-secondary">View</button>
-                </td>
-              </tr>
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-5 text-muted">
+                    <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    Loading complaints...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-5 text-muted">
+                    <div className="py-4">
+                      <i className="bi bi-chat-left-check fs-1 d-block mb-3 text-secondary opacity-50"></i>
+                      <h5 className="text-dark fw-bold mb-1">No Active Complaints or Tickets</h5>
+                      <p className="text-muted small mb-0">
+                        All customer inquiries and support tickets will appear here when submitted.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((item, index) => (
+                  <tr key={item._id || index}>
+                    <td className="text-center text-muted fw-semibold" style={{ fontSize: '13px' }}>
+                      {index + 1}
+                    </td>
+                    <td><strong>#TKT-{item._id ? item._id.slice(-6).toUpperCase() : index + 1}</strong></td>
+                    <td>{item.name || item.user?.name || 'Customer'}</td>
+                    <td>{item.subject || 'Inquiry'}</td>
+                    <td>
+                      <span className="badge bg-warning text-dark">
+                        {item.status || 'Open'}
+                      </span>
+                    </td>
+                    <td className="text-end">
+                      <button className="btn btn-sm btn-primary" style={{ backgroundColor: '#3945E0', border: 'none' }}>
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

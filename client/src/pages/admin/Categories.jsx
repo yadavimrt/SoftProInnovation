@@ -137,7 +137,7 @@ const Categories = () => {
                 <i className="bi bi-tags-fill"></i>
               </div>
             </div>
-          </div>
+          </div>  
         </div>
         <div className="col-12 col-md-4">
           <div className="card border-0 shadow-sm p-3" style={{ borderRadius: '14px', background: 'linear-gradient(135deg, #ecfdf5, #ffffff)', borderLeft: '4px solid #10b981' }}>
@@ -213,7 +213,7 @@ const Categories = () => {
           <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
               <tr>
-                <th style={{ width: '5%' }} className="text-center">#</th>
+                <th style={{ width: '5%' }} className="text-center">S.No</th>
                 <th style={{ width: '8%' }}>Image</th>
                 <th style={{ width: '22%' }}>Category Name</th>
                 <th style={{ width: '35%' }}>Description</th>
@@ -259,37 +259,33 @@ const Categories = () => {
                         {index + 1}
                       </td>
                       <td>
-                        <div className="position-relative" style={{ width: '45px', height: '45px' }}>
+                        <div
+                          className="d-flex align-items-center justify-content-center bg-white border rounded-3 p-1 shadow-xs"
+                          style={{
+                            width: '46px',
+                            height: '46px',
+                            borderColor: '#e2e8f0',
+                            overflow: 'hidden'
+                          }}
+                        >
                           {imgUrl ? (
                             <img
                               src={imgUrl}
                               alt={catName}
-                              className="rounded-3 border shadow-xs"
                               style={{
-                                width: '45px',
-                                height: '45px',
-                                objectFit: 'cover',
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain',
                                 display: 'block'
                               }}
                               onError={(e) => {
                                 e.target.onerror = null;
-                                e.target.style.display = 'none';
-                                const fallback = e.target.nextElementSibling;
-                                if (fallback) fallback.style.display = 'flex';
+                                e.target.src = 'https://placehold.co/100x100?text=No+Img';
                               }}
                             />
-                          ) : null}
-                          <div
-                            className="rounded-3 d-flex align-items-center justify-content-center text-primary bg-primary bg-opacity-10 border border-primary border-opacity-10 flex-shrink-0"
-                            style={{
-                              width: '45px',
-                              height: '45px',
-                              fontSize: '18px',
-                              display: imgUrl ? 'none' : 'flex'
-                            }}
-                          >
-                            <i className="bi bi-image text-primary opacity-75"></i>
-                          </div>
+                          ) : (
+                            <i className="bi bi-image text-muted opacity-50 fs-5"></i>
+                          )}
                         </div>
                       </td>
                       <td>
