@@ -355,7 +355,6 @@ const Product = () => {
                           <i className={(item.rating || 4.8) >= 4.8 ? "bi bi-star-fill" : "bi bi-star-half"}></i>
                         </div>
                         <span className="fw-bold ms-1 text-dark">{item.rating || '4.8'}</span>
-                        <span className="text-muted">({item.reviews || 24} reviews)</span>
                       </div>
 
                       {/* Stock Status */}
@@ -386,10 +385,10 @@ const Product = () => {
                         <button
                           type="button"
                           className="btn btn-outline-primary flex-grow-1 btn-sm py-2 fw-semibold rounded-2"
-                          style={{ fontSize: '12px' }}
+                          disabled={true}
+                          style={{ fontSize: '12px', opacity: 0.6, cursor: 'not-allowed' }}
                           onClick={(e) => {
                             e.stopPropagation()
-                            addToCart(item)
                           }}
                         >
                           <i className="bi bi-cart-plus me-1"></i> Add to Cart
@@ -397,10 +396,10 @@ const Product = () => {
                         <button
                           type="button"
                           className="btn flex-grow-1 btn-sm py-2 fw-semibold rounded-2 text-white"
-                          style={{ fontSize: '12px', backgroundColor: '#ff4500', border: 'none' }}
+                          disabled={true}
+                          style={{ fontSize: '12px', backgroundColor: '#ff4500', border: 'none', opacity: 0.6, cursor: 'not-allowed' }}
                           onClick={(e) => {
                             e.stopPropagation()
-                            buyNow(item, 1, navigate)
                           }}
                         >
                           <i className="bi bi-lightning-fill me-1"></i> Buy Now
@@ -589,7 +588,6 @@ const Product = () => {
                           <i className="bi bi-star-fill"></i>
                         </div>
                         <span className="fw-bold text-dark">{quickViewProduct.rating || '4.8'}</span>
-                        <span className="text-muted">({quickViewProduct.reviews || 24} customer reviews)</span>
                       </div>
 
                       {/* Price Section */}
@@ -650,10 +648,11 @@ const Product = () => {
                       <div className="d-flex gap-2">
                         <button
                           type="button"
-                          className="btn btn-outline-primary flex-grow-1 py-2.5 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5"
-                          disabled={!isInStock}
-                          onClick={() => {
-                            addToCart(quickViewProduct, modalQty)
+                          className="btn btn-outline-primary flex-grow-1 py-2.5 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5 shadow-sm"
+                          disabled={true}
+                          style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                          onClick={(e) => {
+                            e.stopPropagation()
                           }}
                         >
                           <i className="bi bi-cart-plus fs-6"></i> Add to Cart
@@ -662,11 +661,10 @@ const Product = () => {
                         <button
                           type="button"
                           className="btn flex-grow-1 py-2.5 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5 text-white shadow-sm"
-                          style={{ backgroundColor: '#ff4500', border: 'none' }}
-                          disabled={!isInStock}
-                          onClick={() => {
-                            buyNow(quickViewProduct, modalQty, navigate)
-                            closeQuickView()
+                          disabled={true}
+                          style={{ backgroundColor: '#ff4500', border: 'none', opacity: 0.6, cursor: 'not-allowed' }}
+                          onClick={(e) => {
+                            e.stopPropagation()
                           }}
                         >
                           <i className="bi bi-lightning-fill fs-6"></i> Buy Now

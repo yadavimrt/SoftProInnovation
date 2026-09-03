@@ -74,16 +74,19 @@ const Swiper = () => {
   const hasMultiple = categories.length > 5;
 
   return (
-    <section className="category-section py-3">
+    <section className="category-section py-4">
       <div className="container">
         {/* Header Strip */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-3">
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4">
           <div>
-            <span className="category-subtitle text-uppercase text-muted fw-semibold small">BROWSE BY TYPE</span>
-            <h2 className="category-heading mt-1 mb-2 fw-bold">
-              Popular <span className="text-orangered fst-italic">Categories</span>
+            <div className="d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill bg-primary bg-opacity-10 text-primary fw-semibold small mb-2 border border-primary border-opacity-10">
+              <i className="bi bi-grid-fill fs-7"></i>
+              <span className="text-uppercase tracking-wider" style={{ fontSize: '11px', letterSpacing: '0.8px' }}>Browse By Type</span>
+            </div>
+            <h2 className="category-heading mt-1 mb-2 fw-bold text-dark fs-2">
+              Popular <span style={{ color: '#ff4500' }} className="fst-italic fw-extrabold">Categories</span>
             </h2>
-            <p className="category-text text-muted mb-0">
+            <p className="category-text text-secondary mb-0" style={{ fontSize: '14.5px', maxWidth: '520px' }}>
               Find exactly what your project needs from our curated electronics families.
             </p>
           </div>
@@ -93,16 +96,16 @@ const Swiper = () => {
             <div className="d-flex gap-2 mt-3 mt-md-0 align-items-center">
               <button
                 ref={prevRef}
-                className="cat-nav-btn btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center"
-                style={{ width: '40px', height: '40px', padding: 0 }}
+                className="cat-nav-btn rounded-circle d-flex align-items-center justify-content-center"
+                style={{ width: '42px', height: '42px', padding: 0 }}
                 aria-label="Previous Slide"
               >
                 <i className="bi bi-chevron-left fs-6"></i>
               </button>
               <button
                 ref={nextRef}
-                className="cat-nav-btn btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center"
-                style={{ width: '40px', height: '40px', padding: 0 }}
+                className="cat-nav-btn rounded-circle d-flex align-items-center justify-content-center"
+                style={{ width: '42px', height: '42px', padding: 0 }}
                 aria-label="Next Slide"
               >
                 <i className="bi bi-chevron-right fs-6"></i>
@@ -130,7 +133,7 @@ const Swiper = () => {
           <SwiperReact
             key={`swiper-cat-count-${categories.length}`}
             modules={[Navigation, Autoplay]}
-            spaceBetween={16}
+            spaceBetween={20}
             slidesPerView={1}
             loop={hasMultiple}
             speed={800}
@@ -168,7 +171,7 @@ const Swiper = () => {
               },
               1024: {
                 slidesPerView: Math.min(5, categories.length),
-                spaceBetween: 20,
+                spaceBetween: 22,
               },
             }}
             className="category-swiper py-2"
@@ -181,12 +184,12 @@ const Swiper = () => {
               return (
                 <SwiperSlide key={cat._id || cat.id || index}>
                   <div
-                    className="category-card text-center p-3 h-100 cursor-pointer"
+                    className="category-card text-center p-4 h-100 cursor-pointer d-flex flex-column align-items-center justify-content-between"
                     style={{ cursor: 'pointer' }}
                     onClick={() => handleCategoryClick(catName)}
                     title={`View products in ${catName}`}
                   >
-                    <div className="category-img-wrapper mb-3 mx-auto d-flex align-items-center justify-content-center">
+                    <div className="category-img-wrapper mb-3 d-flex align-items-center justify-content-center">
                       <img
                         src={catImg}
                         alt={catName}
@@ -197,12 +200,21 @@ const Swiper = () => {
                         }}
                       />
                     </div>
-                    <h5 className="category-card-title mb-1 text-truncate" title={catName}>
-                      {catName}
-                    </h5>
-                    <span className="category-card-count text-muted small">
-                      {productCount > 0 ? `${productCount}+ Products` : `${productCount} Products`}
-                    </span>
+                    
+                    <div className="w-100">
+                      <h5 className="category-card-title mb-1 text-truncate" title={catName}>
+                        {catName}
+                      </h5>
+                      
+                      <div className="d-flex align-items-center justify-content-center gap-1.5 mt-2">
+                        <span className="category-card-count text-secondary bg-slate-100 border px-2.5 py-0.5 rounded-pill">
+                          {productCount > 0 ? `${productCount}+ Products` : `${productCount} Products`}
+                        </span>
+                        <span className="category-arrow-icon">
+                          <i className="bi bi-arrow-right fs-7"></i>
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </SwiperSlide>
               );

@@ -33,6 +33,9 @@ const Login = () => {
         localStorage.setItem('name', response.data.name || response.data.user?.name);
         localStorage.setItem('user', JSON.stringify(response.data.user));
 
+        // Notify app of user session change
+        window.dispatchEvent(new Event('userSessionChange'));
+
         setTimeout(() => {
           navigate('/');
         }, 1000);

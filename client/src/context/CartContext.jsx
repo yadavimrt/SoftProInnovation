@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const CartContext = createContext();
 
@@ -17,52 +17,55 @@ const getUserStorageKey = (prefix = 'softpro_cart') => {
 };
 
 export const CartProvider = ({ children }) => {
-  // Cart Items State
-  const [cartItems, setCartItems] = useState(() => {
-    try {
-      const storageKey = getUserStorageKey('softpro_cart');
-      if (!storageKey) return [];
-      const saved = localStorage.getItem(storageKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  // Wishlist Items State
-  const [wishlistItems, setWishlistItems] = useState(() => {
-    try {
-      const storageKey = getUserStorageKey('softpro_wishlist');
-      if (!storageKey) return [];
-      const saved = localStorage.getItem(storageKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
+  const [cartItems, setCartItems] = useState([]);
+  const [wishlistItems, setWishlistItems] = useState([]);
   const [toast, setToast] = useState({ message: '', type: 'info' });
 
-  // Sync state on user login change
-  useEffect(() => {
+  // Sync state with current user session
+  const syncUserCartAndWishlist = useCallback(() => {
     const cartKey = getUserStorageKey('softpro_cart');
     if (cartKey) {
-      const savedCart = localStorage.getItem(cartKey);
-      setCartItems(savedCart ? JSON.parse(savedCart) : []);
+      try {
+        const savedCart = localStorage.getItem(cartKey);
+        setCartItems(savedCart ? JSON.parse(savedCart) : []);
+      } catch (e) {
+        setCartItems([]);
+      }
     } else {
       setCartItems([]);
     }
 
     const wishlistKey = getUserStorageKey('softpro_wishlist');
     if (wishlistKey) {
-      const savedWishlist = localStorage.getItem(wishlistKey);
-      setWishlistItems(savedWishlist ? JSON.parse(savedWishlist) : []);
+      try {
+        const savedWishlist = localStorage.getItem(wishlistKey);
+        setWishlistItems(savedWishlist ? JSON.parse(savedWishlist) : []);
+      } catch (e) {
+        setWishlistItems([]);
+      }
     } else {
       setWishlistItems([]);
     }
   }, []);
 
-  // Persist Cart
+  // Sync state on mount & whenever user session changes
+  useEffect(() => {
+    syncUserCartAndWishlist();
+
+    const handleSessionChange = () => {
+      syncUserCartAndWishlist();
+    };
+
+    window.addEventListener('userSessionChange', handleSessionChange);
+    window.addEventListener('storage', handleSessionChange);
+
+    return () => {
+      window.removeEventListener('userSessionChange', handleSessionChange);
+      window.removeEventListener('storage', handleSessionChange);
+    };
+  }, [syncUserCartAndWishlist]);
+
+  // Persist Cart (Only if user is logged in)
   useEffect(() => {
     try {
       const storageKey = getUserStorageKey('softpro_cart');
@@ -74,7 +77,7 @@ export const CartProvider = ({ children }) => {
     }
   }, [cartItems]);
 
-  // Persist Wishlist
+  // Persist Wishlist (Only if user is logged in)
   useEffect(() => {
     try {
       const storageKey = getUserStorageKey('softpro_wishlist');

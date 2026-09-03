@@ -2,7 +2,7 @@ const express= require('express')
 const cors = require('cors')
 const dotenv = require('dotenv')
 const path = require('path');
-dotenv.config();
+dotenv.config({ quiet: true });
 const app = express();
 const adminRoutes = require('./routes/adminRoutes');
 const mongoDB = require('./config/db');
@@ -21,8 +21,6 @@ app.use('/api/product', require('./routes/productRoutes'));
 app.use('/api/cart', require('./routes/cartRoutes'));
 app.use('/api/address', require('./routes/addressRoutes'));
 
-// STATIC FILES
-app.use('/',express.static(path.join(__dirname,'uploads')));
-app.listen(process.env.PORT , () => {
+app.listen(process.env.PORT || 5000, () => {
     console.log(`Server is running on port ${process.env.PORT || 5000}`);
 });

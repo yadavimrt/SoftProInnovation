@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import logo from "../assets/logo.png";
 import { useCart } from '../context/CartContext';
@@ -8,6 +8,8 @@ const Header = () => {
   const { getCartCount, getWishlistCount } = useCart();
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -22,6 +24,18 @@ const Header = () => {
     }
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('name');
@@ -32,6 +46,11 @@ const Header = () => {
     localStorage.removeItem('softpro_wishlist');
     setUserName('');
     setUserRole('');
+    setShowDropdown(false);
+
+    // Notify app of user session change (resets cart & wishlist)
+    window.dispatchEvent(new Event('userSessionChange'));
+
     navigate('/login');
   };
 
@@ -97,24 +116,48 @@ const Header = () => {
                 </Link>
 
                 {userName ? (
-                  <div className="dropdown">
-                    <button className="btn btn-orangered btn-sm dropdown-toggle d-flex align-items-center gap-1.5 py-1 px-3" type="button" data-bs-toggle="dropdown" aria-expanded="false" style={{ fontSize: '13px' }}>
-                      <i className="bi bi-person-circle"></i> {userName}
+                  <div className="position-relative" ref={dropdownRef}>
+                    <button
+                      className="btn btn-orangered btn-sm dropdown-toggle d-flex align-items-center gap-2 py-1.5 px-3"
+                      type="button"
+                      onClick={() => setShowDropdown(!showDropdown)}
+                      style={{ fontSize: '13px' }}
+                    >
+                      <i className="bi bi-person-circle fs-6"></i> {userName}
                     </button>
-                    <ul className="dropdown-menu dropdown-menu-end shadow-sm">
-                      {userRole === 'admin' && (
-                        <li>
-                          <Link className="dropdown-item" to="/dashboard">
-                            <i className="bi bi-speedometer2 me-2"></i> Admin Dashboard
+                    {showDropdown && (
+                      <div className="user-dropdown-menu position-absolute end-0 mt-2">
+                        <div className="user-dropdown-header">
+                          Your Account
+                        </div>
+                        <div className="user-dropdown-list">
+                          <Link className="user-dropdown-item" to="" onClick={() => setShowDropdown(false)}>
+                            <i className="bi bi-person-circle"></i>
+                            <span>My Profile</span>
                           </Link>
-                        </li>
-                      )}
-                      <li>
-                        <button className="dropdown-item text-danger" onClick={handleLogout}>
-                          <i className="bi bi-box-arrow-right me-2"></i> Logout
-                        </button>
-                      </li>
-                    </ul>
+                          <Link className="user-dropdown-item" to="/" onClick={() => setShowDropdown(false)}>
+                            <i className="bi bi-box-seam"></i>
+                            <span>Orders</span>
+                          </Link>
+                          <Link className="user-dropdown-item" to="/addresses" onClick={() => setShowDropdown(false)}>
+                            <i className="bi bi-geo-alt"></i>
+                            <span>Saved Addresses</span>
+                          </Link>
+                          <Link className="user-dropdown-item" to="/wishlist" onClick={() => setShowDropdown(false)}>
+                            <i className="bi bi-heart"></i>
+                            <span>Wishlist</span>
+                          </Link>
+                          <div className="user-dropdown-divider"></div>
+                          <button
+                            className="user-dropdown-item logout-item"
+                            onClick={handleLogout}
+                          >
+                            <i className="bi bi-box-arrow-right"></i>
+                            <span>Logout</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <>

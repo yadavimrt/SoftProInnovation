@@ -522,11 +522,10 @@ const FeaturedProducts = () => {
                         <button
                           type="button"
                           className="btn btn-outline-primary flex-grow-1 btn-sm py-2 fw-semibold rounded-2"
-                          disabled={!inStock}
-                          style={{ fontSize: '12px' }}
+                          disabled={true}
+                          style={{ fontSize: '12px', opacity: 0.6, cursor: 'not-allowed' }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            addToCart(item);
                           }}
                         >
                           <i className="bi bi-cart-plus me-1"></i> Add to Cart
@@ -534,11 +533,10 @@ const FeaturedProducts = () => {
                         <button
                           type="button"
                           className="btn flex-grow-1 btn-sm py-2 fw-semibold rounded-2 text-white"
-                          disabled={!inStock}
-                          style={{ fontSize: '12px', backgroundColor: '#ff4500', border: 'none' }}
+                          disabled={true}
+                          style={{ fontSize: '12px', backgroundColor: '#ff4500', border: 'none', opacity: 0.6, cursor: 'not-allowed' }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            buyNow(item, 1, navigate);
                           }}
                         >
                           <i className="bi bi-lightning-fill me-1"></i> Buy Now
@@ -755,9 +753,11 @@ const FeaturedProducts = () => {
                         <div className="mt-auto d-flex gap-2">
                           <button
                             type="button"
-                            className="btn btn-outline-primary flex-grow-1 py-2 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5"
-                            onClick={() => {
-                              addToCart(quickViewProduct, modalQty);
+                            className="btn btn-outline-primary flex-grow-1 py-2 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5 shadow-sm"
+                            disabled={true}
+                            style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
                             }}
                           >
                             <i className="bi bi-cart-plus fs-6"></i> Add to Cart
@@ -766,10 +766,10 @@ const FeaturedProducts = () => {
                           <button
                             type="button"
                             className="btn flex-grow-1 py-2 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5 text-white shadow-sm"
-                            style={{ backgroundColor: '#ff4500', border: 'none' }}
-                            onClick={() => {
-                              buyNow(quickViewProduct, modalQty, navigate);
-                              closeQuickView();
+                            disabled={true}
+                            style={{ backgroundColor: '#ff4500', border: 'none', opacity: 0.6, cursor: 'not-allowed' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
                             }}
                           >
                             <i className="bi bi-lightning-fill fs-6"></i> Buy Now

@@ -147,17 +147,22 @@ const Wishlist = () => {
                           <button
                             type="button"
                             className="btn btn-outline-primary flex-grow-1 btn-sm py-2 fw-semibold rounded-2"
-                            disabled={!inStock}
-                            onClick={() => addToCart(item)}
+                            disabled={true}
+                            style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
                           >
                             <i className="bi bi-cart-plus me-1"></i> Add to Cart
                           </button>
                           <button
                             type="button"
                             className="btn flex-grow-1 btn-sm py-2 fw-semibold rounded-2 text-white"
-                            style={{ backgroundColor: '#ff4500', border: 'none' }}
-                            disabled={!inStock}
-                            onClick={() => buyNow(item, 1, navigate)}
+                            disabled={true}
+                            style={{ backgroundColor: '#ff4500', border: 'none', opacity: 0.6, cursor: 'not-allowed' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
                           >
                             <i className="bi bi-lightning-fill me-1"></i> Buy Now
                           </button>
