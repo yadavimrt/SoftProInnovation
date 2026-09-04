@@ -5,23 +5,39 @@ import { useCart } from '../context/CartContext';
 
 const Header = () => {
   const navigate = useNavigate();
-  const { getCartCount, getWishlistCount } = useCart();
+  const { getWishlistCount, showToast } = useCart();
   const [userName, setUserName] = useState('');
+  const [userPicture, setUserPicture] = useState('');
   const [userRole, setUserRole] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const name = localStorage.getItem('name');
-    const role = localStorage.getItem('role');
-    if (token && name) {
-      setUserName(name);
-      setUserRole(role);
-    } else {
-      setUserName('');
-      setUserRole('');
-    }
+    const syncUserSession = () => {
+      const token = localStorage.getItem('token');
+      const name = localStorage.getItem('name');
+      const role = localStorage.getItem('role');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (token && name) {
+        setUserName(name);
+        setUserRole(role);
+        setUserPicture(user.picture || '');
+      } else {
+        setUserName('');
+        setUserRole('');
+        setUserPicture('');
+      }
+    };
+
+    syncUserSession();
+
+    window.addEventListener('userSessionChange', syncUserSession);
+    window.addEventListener('storage', syncUserSession);
+
+    return () => {
+      window.removeEventListener('userSessionChange', syncUserSession);
+      window.removeEventListener('storage', syncUserSession);
+    };
   }, []);
 
   useEffect(() => {
@@ -45,6 +61,7 @@ const Header = () => {
     localStorage.removeItem('softpro_cart');
     localStorage.removeItem('softpro_wishlist');
     setUserName('');
+    setUserPicture('');
     setUserRole('');
     setShowDropdown(false);
 
@@ -54,7 +71,6 @@ const Header = () => {
     navigate('/login');
   };
 
-  const cartCount = getCartCount();
   const wishlistCount = getWishlistCount();
 
   return (
@@ -85,61 +101,70 @@ const Header = () => {
                 </li>
               </ul>
               <div className="d-flex gap-2 align-items-center mt-2 mt-lg-0">
-                {/* Wishlist Button */}
-                <Link
-                  to="/wishlist"
-                  className="btn btn-outline-light btn-sm position-relative d-flex align-items-center justify-content-center p-2 rounded-circle border-0"
-                  title="Wishlist"
-                  style={{ width: '36px', height: '36px', backgroundColor: 'rgba(255,255,255,0.15)' }}
-                >
-                  <i className="bi bi-heart fs-6"></i>
-                  {wishlistCount > 0 && (
-                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '10px' }}>
-                      {wishlistCount}
-                    </span>
-                  )}
-                </Link>
-
-                {/* Cart Button */}
-                <Link
-                  to="/cart"
-                  className="btn btn-outline-light btn-sm position-relative d-flex align-items-center justify-content-center p-2 rounded-circle border-0"
-                  title="Cart"
-                  style={{ width: '36px', height: '36px', backgroundColor: 'rgba(255,255,255,0.15)' }}
-                >
-                  <i className="bi bi-cart3 fs-6"></i>
-                  {cartCount > 0 && (
-                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark fw-bold" style={{ fontSize: '10px' }}>
-                      {cartCount}
-                    </span>
-                  )}
-                </Link>
-
                 {userName ? (
-                  <div className="position-relative" ref={dropdownRef}>
-                    <button
-                      className="btn btn-orangered btn-sm dropdown-toggle d-flex align-items-center gap-2 py-1.5 px-3"
-                      type="button"
-                      onClick={() => setShowDropdown(!showDropdown)}
-                      style={{ fontSize: '13px' }}
+                  <>
+                    {/* Wishlist Button */}
+                    <Link
+                      to="/wishlist"
+                      className="btn btn-outline-light btn-sm position-relative d-flex align-items-center justify-content-center p-2 rounded-circle border-0"
+                      title="Wishlist"
+                      style={{ width: '36px', height: '36px', backgroundColor: 'rgba(255,255,255,0.15)' }}
                     >
-                      <i className="bi bi-person-circle fs-6"></i> {userName}
+                      <i className="bi bi-heart fs-6"></i>
+                      {wishlistCount > 0 && (
+                        <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '10px' }}>
+                          {wishlistCount}
+                        </span>
+                      )}
+                    </Link>
+
+                    {/* Shopping Cart Icon (Preview Mode - kuch work nahi ho) */}
+                    <button
+                      type="button"
+                      className="btn btn-outline-light btn-sm position-relative d-flex align-items-center justify-content-center p-2 rounded-circle border-0"
+                      title="Shopping Cart (Preview)"
+                      style={{ width: '36px', height: '36px', backgroundColor: 'rgba(255,255,255,0.15)' }}
+                      onClick={() => showToast && showToast('Cart is in preview mode. Please contact us to place orders!', 'info')}
+                    >
+                      <i className="bi bi-cart3 fs-6"></i>
+                      <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '10px' }}>
+                        0
+                      </span>
                     </button>
+
+                    <div className="position-relative" ref={dropdownRef}>
+                      <button
+                        className="navbar-btn-user dropdown-toggle"
+                        type="button"
+                        onClick={() => setShowDropdown(!showDropdown)}
+                      >
+                        {userPicture ? (
+                          <img src={`http://localhost:5000${userPicture}`} alt="Profile" className="rounded-circle me-1" width="24" height="24" style={{ objectFit: 'cover' }} />
+                        ) : (
+                          <i className="bi bi-person-circle fs-6"></i>
+                        )} {userName}
+                      </button>
                     {showDropdown && (
                       <div className="user-dropdown-menu position-absolute end-0 mt-2">
                         <div className="user-dropdown-header">
                           Your Account
                         </div>
                         <div className="user-dropdown-list">
-                          <Link className="user-dropdown-item" to="" onClick={() => setShowDropdown(false)}>
+                          {userRole === 'admin' && (
+                            <Link className="user-dropdown-item text-primary fw-semibold" to="/dashboard" onClick={() => setShowDropdown(false)}>
+                              <i className="bi bi-speedometer2 text-primary"></i>
+                              <span>Admin Dashboard</span>
+                            </Link>
+                          )}
+                          <Link className="user-dropdown-item" to="/profile" onClick={() => setShowDropdown(false)}>
                             <i className="bi bi-person-circle"></i>
                             <span>My Profile</span>
                           </Link>
-                          <Link className="user-dropdown-item" to="/" onClick={() => setShowDropdown(false)}>
+                          <Link className="user-dropdown-item" to="/profile?tab=orders" onClick={() => setShowDropdown(false)}>
                             <i className="bi bi-box-seam"></i>
                             <span>Orders</span>
                           </Link>
-                          <Link className="user-dropdown-item" to="/addresses" onClick={() => setShowDropdown(false)}>
+                          <Link className="user-dropdown-item" to="/profile?tab=addresses" onClick={() => setShowDropdown(false)}>
                             <i className="bi bi-geo-alt"></i>
                             <span>Saved Addresses</span>
                           </Link>
@@ -159,10 +184,11 @@ const Header = () => {
                       </div>
                     )}
                   </div>
-                ) : (
+                </>
+              ) : (
                   <>
-                    <Link to="/login" className="btn btn-outline-orangered btn-sm px-3 py-1 text-decoration-none text-white" style={{ fontSize: '13px', borderColor: 'rgba(255,255,255,0.5)' }}>Login</Link>
-                    <Link to="/register" className="btn btn-orangered btn-sm px-3 py-1 text-decoration-none" style={{ fontSize: '13px', backgroundColor: '#ff4500', color: 'white' }}>Register</Link>
+                    <Link to="/login" className="navbar-btn-login">Login</Link>
+                    <Link to="/register" className="navbar-btn-register">Register</Link>
                   </>
                 )}
               </div>

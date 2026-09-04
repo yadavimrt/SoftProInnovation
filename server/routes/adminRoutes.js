@@ -26,35 +26,42 @@ const jwt = require('jsonwebtoken')
 
 
 Router.post('/login', async (req, res) => {
-    try{
-        const{email,password} = req.body;
-        const data =await Admin.findOne({email:email});
-        if(!data){
-            return res.json({msg:"Email not exit"});
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ msg: "Email and password are required" });
         }
-        if (data.password == password) {
+
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanPassword = String(password).trim();
+
+        const data = await Admin.findOne({ email: cleanEmail });
+        if (!data) {
+            return res.status(400).json({ msg: "Email not found or Admin does not exist" });
+        }
+
+        if (String(data.password).trim() === cleanPassword) {
             const token = jwt.sign(
-                { adminId: data._id },
-                process.env.JWT_SECRET,
+                { adminId: data._id, role: 'admin' },
+                process.env.JWT_SECRET || 'ocCzmUh4OjfpybPJfx4chY5gUkmOfJ2dmjSwlJHfiSU',
                 { expiresIn: '1d' }
             );
 
             return res.json({
-                msg:"Sucess",
-                token:token,
-                role:"admin",
-                name:data.name,
-                adminId:data._id
-            })
-
-        }else{
-            return res.json({msg:"Password is Incorrect"})
-                }
-            } catch (er) {
-                console.log(er);
-                return res.status(500).json({ msg: "Server error" });
-            }
-        });
+                msg: "Sucess",
+                token: token,
+                role: "admin",
+                name: data.name,
+                adminId: data._id
+            });
+        } else {
+            return res.status(400).json({ msg: "Password is Incorrect" });
+        }
+    } catch (er) {
+        console.error("Admin login error:", er);
+        return res.status(500).json({ msg: "Server error: " + (er.message || "Database connection error") });
+    }
+});
 
 
 

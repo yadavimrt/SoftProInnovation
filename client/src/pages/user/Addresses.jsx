@@ -11,6 +11,10 @@ const Addresses = () => {
   const [loading, setLoading] = useState(true);
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
 
+  // Delete Modal State
+  const [deleteModal, setDeleteModal] = useState({ show: false, id: null, name: '', address: '' });
+  const [deletingId, setDeletingId] = useState(null);
+
   // Modal / Form state
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -173,19 +177,46 @@ const Addresses = () => {
     }
   };
 
-  const handleDelete = async (addressId, name) => {
-    if (window.confirm(`Are you sure you want to delete address for "${name || 'this entry'}"?`)) {
-      try {
-        const userId = user._id || user.id;
-        const res = await axios.delete(`http://localhost:5000/api/address/delete/${addressId}`);
-        if (res.data.success) {
-          showAlert('success', 'Address deleted successfully!');
-          fetchAddresses(userId);
-        }
-      } catch (err) {
-        console.error('Error deleting address:', err);
-        showAlert('danger', 'Failed to delete address.');
+  const openDeleteModal = (addr) => {
+    setDeleteModal({
+      show: true,
+      id: addr._id,
+      name: addr.name || 'this address',
+      address: `${addr.address || addr.Address || ''}, ${addr.city || ''}`
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
+    const targetId = deleteModal.id;
+    const targetName = deleteModal.name;
+    const userId = user?._id || user?.id;
+    setDeletingId(targetId);
+
+    // Optimistic UI update
+    setAddresses(prev => prev.filter(a => a._id !== targetId));
+
+    try {
+      const res = await axios.delete(`http://localhost:5000/api/address/delete/${targetId}`);
+      if (res.data?.success) {
+        showAlert('success', res.data?.message || 'Address deleted successfully!');
+        setDeleteModal({ show: false, id: null, name: '', address: '' });
+        if (userId) fetchAddresses(userId);
       }
+    } catch (err) {
+      console.error('Delete error, attempting POST fallback:', err);
+      try {
+        const fallbackRes = await axios.post(`http://localhost:5000/api/address/delete/${targetId}`);
+        showAlert('success', fallbackRes.data?.message || 'Address deleted successfully!');
+        setDeleteModal({ show: false, id: null, name: '', address: '' });
+        if (userId) fetchAddresses(userId);
+      } catch (fallbackErr) {
+        const errMsg = fallbackErr.response?.data?.message || err.response?.data?.message || 'Failed to delete address.';
+        showAlert('danger', errMsg);
+        if (userId) fetchAddresses(userId); // Rollback
+      }
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -300,7 +331,7 @@ const Addresses = () => {
                           <button
                             className="btn btn-sm btn-light text-danger border rounded-circle p-2 d-inline-flex align-items-center justify-content-center"
                             style={{ width: '34px', height: '34px' }}
-                            onClick={() => handleDelete(addr._id, addr.name)}
+                            onClick={() => openDeleteModal(addr)}
                             title="Delete Address"
                           >
                             <i className="bi bi-trash-fill"></i>
@@ -491,6 +522,61 @@ const Addresses = () => {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteModal.show && (
+          <div 
+            className="modal fade show d-block" 
+            tabIndex="-1" 
+            style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', zIndex: 1060 }}
+            role="dialog"
+          >
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '440px' }}>
+              <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div className="modal-body p-4 text-center">
+                  <div 
+                    className="rounded-circle bg-danger bg-opacity-10 text-danger d-inline-flex align-items-center justify-content-center mb-3"
+                    style={{ width: '64px', height: '64px' }}
+                  >
+                    <i className="bi bi-trash3-fill fs-2"></i>
+                  </div>
+                  <h5 className="modal-title fw-bold text-dark mb-2">Delete Address?</h5>
+                  <p className="text-muted small mb-3">
+                    Are you sure you want to delete the address for <strong className="text-dark">"{deleteModal.name}"</strong>{deleteModal.address ? ` (${deleteModal.address})` : ''}?
+                  </p>
+                </div>
+                <div className="modal-footer border-0 bg-light p-3 px-4 d-flex justify-content-end gap-2">
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-secondary px-3.5 py-2 fw-medium rounded-3"
+                    disabled={Boolean(deletingId)}
+                    onClick={() => setDeleteModal({ show: false, id: null, name: '', address: '' })}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-danger px-4 py-2 fw-semibold rounded-3 d-inline-flex align-items-center gap-2 shadow-sm"
+                    disabled={Boolean(deletingId)}
+                    onClick={confirmDelete}
+                  >
+                    {deletingId ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-trash3"></i>
+                        <span>Yes, Delete</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

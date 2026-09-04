@@ -9,6 +9,7 @@ const Register = () => {
   const [mobileNumber, setMobileNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [picture, setPicture] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,12 +29,14 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/user/register', {
-        name: fullName.trim(),
-        mobile: mobileNumber.trim(),
-        email: email.trim(),
-        password: password
-      });
+      const formData = new FormData();
+      formData.append('name', fullName.trim());
+      formData.append('mobile', mobileNumber.trim());
+      formData.append('email', email.trim());
+      formData.append('password', password);
+      if (picture) formData.append('picture', picture);
+
+      const response = await axios.post('http://localhost:5000/api/user/register', formData);
 
       if (response.data.success) {
         setSuccess(response.data.message || 'Registration successful! Redirecting to login...');
@@ -121,6 +124,18 @@ const Register = () => {
                     <i className="bi bi-phone login-input-icon"></i>
                   </div>
                 </div>
+              </div>
+
+              {/* Email Address Field */}
+              <div className="mb-3 text-start">
+                <label htmlFor="pictureInput" className="form-label login-label">Profile Image <span className="text-muted fw-normal">(optional)</span></label>
+                <input
+                  id="pictureInput"
+                  type="file"
+                  className="form-control login-input"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={(e) => setPicture(e.target.files[0] || null)}
+                />
               </div>
 
               {/* Email Address Field */}

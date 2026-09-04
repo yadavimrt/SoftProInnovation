@@ -85,7 +85,7 @@ const DashboardLayout = () => {
           <button 
             type="button" 
             onClick={handleLogout} 
-            className="logout-link btn btn-link text-decoration-none w-100 text-start border-0 bg-transparent p-0"
+            className="logout-link w-100 border-0"
           >
             <i className="bi bi-box-arrow-right"></i> Logout
           </button>

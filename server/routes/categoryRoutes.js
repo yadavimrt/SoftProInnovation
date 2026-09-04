@@ -125,16 +125,49 @@ Router.patch('/patch/:id', async (req, res) => {
     }
 });
 
-Router.delete('/delete/:id', async (req, res) => {
+const deleteCategoryHandler = async (req, res) => {
     try {
-        const deleted = await Category.findByIdAndDelete(req.params.id);
-        if (!deleted) {
+        const id = req.params.id;
+        if (!id) {
+            return res.status(400).json({ success: false, message: 'Category ID is required' });
+        }
+
+        const category = await Category.findById(id);
+        if (!category) {
             return res.status(404).json({ success: false, message: 'Category not found' });
         }
-        res.json({ success: true, message: 'Category deleted successfully' });
+
+        // Delete category image from disk if exists
+        if (category.image) {
+            try {
+                const fullImagePath = path.join(__dirname, '..', category.image);
+                if (fs.existsSync(fullImagePath)) {
+                    fs.unlinkSync(fullImagePath);
+                }
+            } catch (imgErr) {
+                console.warn('Could not delete category image file:', imgErr.message);
+            }
+        }
+
+        // Unlink or update any products assigned to this category
+        try {
+            const Product = require('../model/Product');
+            await Product.updateMany({ category_id: id }, { $unset: { category_id: 1 } });
+        } catch (prodErr) {
+            console.warn('Could not update products for deleted category:', prodErr.message);
+        }
+
+        await Category.findByIdAndDelete(id);
+
+        return res.json({ success: true, message: 'Category deleted successfully' });
     } catch (error) {
-        res.status(500).json({ success: false, message: "Error deleting category", error: error.message });
+        console.error('Error deleting category:', error);
+        return res.status(500).json({ success: false, message: 'Error deleting category', error: error.message });
     }
-});
+};
+
+Router.delete('/delete/:id', deleteCategoryHandler);
+Router.delete('/:id', deleteCategoryHandler);
+Router.post('/delete/:id', deleteCategoryHandler);
 
 module.exports = Router;

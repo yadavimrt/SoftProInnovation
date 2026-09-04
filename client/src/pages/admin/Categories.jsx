@@ -9,6 +9,8 @@ const Categories = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
+  const [deleteModal, setDeleteModal] = useState({ show: false, id: null, name: '', productCount: 0 });
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -38,16 +40,43 @@ const Categories = () => {
     }, 4000);
   };
 
-  const handleDelete = async (id, name) => {
-    if (window.confirm(`Are you sure you want to delete category "${name || 'this category'}"?`)) {
+  const openDeleteModal = (cat) => {
+    setDeleteModal({
+      show: true,
+      id: cat._id,
+      name: cat.category || cat.name || 'Category',
+      productCount: cat.productCount || 0
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
+    const targetId = deleteModal.id;
+    const targetName = deleteModal.name;
+    setDeletingId(targetId);
+
+    try {
+      // Optimistically update list for instant feedback
+      setCategories(prev => prev.filter(c => c._id !== targetId));
+
+      const res = await axios.delete(`http://localhost:5000/api/category/delete/${targetId}`);
+      showAlert('success', res.data?.message || `Category "${targetName}" deleted successfully!`);
+      setDeleteModal({ show: false, id: null, name: '', productCount: 0 });
+      fetchCategories();
+    } catch (err) {
+      console.error('Delete error, trying POST fallback:', err);
       try {
-        const res = await axios.delete(`http://localhost:5000/api/category/delete/${id}`);
-        showAlert('success', res.data.message || 'Category deleted successfully!');
+        const fallbackRes = await axios.post(`http://localhost:5000/api/category/delete/${targetId}`);
+        showAlert('success', fallbackRes.data?.message || `Category "${targetName}" deleted successfully!`);
+        setDeleteModal({ show: false, id: null, name: '', productCount: 0 });
         fetchCategories();
-      } catch (err) {
-        const errMsg = err.response?.data?.message || 'Failed to delete category.';
+      } catch (fallbackErr) {
+        const errMsg = fallbackErr.response?.data?.message || err.response?.data?.message || 'Failed to delete category.';
         showAlert('danger', errMsg);
+        fetchCategories();
       }
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -334,10 +363,11 @@ const Categories = () => {
                             <i className="bi bi-pencil"></i>
                           </Link>
                           <button
+                            type="button"
                             className="btn btn-sm btn-outline-danger"
                             title="Delete Category"
                             style={{ borderRadius: '0 6px 6px 0' }}
-                            onClick={() => handleDelete(cat._id, catName)}
+                            onClick={() => openDeleteModal(cat)}
                           >
                             <i className="bi bi-trash"></i>
                           </button>
@@ -351,6 +381,77 @@ const Categories = () => {
           </table>
         </div>
       </div>
+
+      {/* Modern In-App Delete Confirmation Modal (Never blocked by browser) */}
+      {deleteModal.show && (
+        <div 
+          className="modal show d-block" 
+          tabIndex="-1" 
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', zIndex: 1060 }}
+          onClick={() => !deletingId && setDeleteModal({ show: false, id: null, name: '', productCount: 0 })}
+        >
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div className="modal-header border-0 bg-danger bg-opacity-10 p-4 pb-2">
+                <div className="d-flex align-items-center gap-2.5">
+                  <div className="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+                    <i className="bi bi-trash3-fill fs-5"></i>
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-dark mb-0">Delete Category</h5>
+                    <small className="text-muted">This action is permanent</small>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  disabled={Boolean(deletingId)}
+                  onClick={() => setDeleteModal({ show: false, id: null, name: '', productCount: 0 })}
+                ></button>
+              </div>
+              <div className="modal-body p-4 pt-3">
+                <p className="mb-2 text-secondary" style={{ fontSize: '15px' }}>
+                  Are you sure you want to permanently delete category <strong className="text-dark">"{deleteModal.name}"</strong>?
+                </p>
+                {deleteModal.productCount > 0 && (
+                  <div className="alert alert-warning d-flex align-items-center gap-2 p-2.5 rounded-3 mb-0" style={{ fontSize: '13px' }}>
+                    <i className="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                    <span>This category currently contains <strong>{deleteModal.productCount}</strong> products. Deleting it will unlink those products.</span>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer border-0 bg-light p-3 px-4 d-flex justify-content-end gap-2">
+                <button 
+                  type="button" 
+                  className="btn btn-outline-secondary px-3.5 py-2 fw-medium rounded-3"
+                  disabled={Boolean(deletingId)}
+                  onClick={() => setDeleteModal({ show: false, id: null, name: '', productCount: 0 })}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-danger px-4 py-2 fw-semibold rounded-3 d-inline-flex align-items-center gap-2 shadow-sm"
+                  disabled={Boolean(deletingId)}
+                  onClick={confirmDelete}
+                >
+                  {deletingId ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-trash3"></i>
+                      <span>Yes, Delete Category</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

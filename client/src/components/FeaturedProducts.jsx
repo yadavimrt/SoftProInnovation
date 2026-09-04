@@ -23,8 +23,6 @@ const fallbackProducts = [
     badge: 'Sale',
     thumbnail: img12,
     images: [img12, img13],
-    rating: 4.8,
-    reviews: 126,
   },
   {
     _id: '2',
@@ -36,8 +34,6 @@ const fallbackProducts = [
     badge: 'New',
     thumbnail: img13,
     images: [img13, img14],
-    rating: 4.5,
-    reviews: 89,
   },
   {
     _id: '3',
@@ -49,8 +45,6 @@ const fallbackProducts = [
     badge: '',
     thumbnail: img14,
     images: [img14, img15],
-    rating: 4.9,
-    reviews: 215,
   },
   {
     _id: '4',
@@ -62,8 +56,6 @@ const fallbackProducts = [
     badge: '',
     thumbnail: img15,
     images: [img15, img12],
-    rating: 4.7,
-    reviews: 34,
   },
   {
     _id: '5',
@@ -75,8 +67,6 @@ const fallbackProducts = [
     badge: 'Best Seller',
     thumbnail: img16,
     images: [img16, img17],
-    rating: 4.8,
-    reviews: 450,
   },
   {
     _id: '6',
@@ -88,8 +78,6 @@ const fallbackProducts = [
     badge: '',
     thumbnail: img17,
     images: [img17, img18],
-    rating: 4.6,
-    reviews: 78,
   },
   {
     _id: '7',
@@ -101,8 +89,6 @@ const fallbackProducts = [
     badge: '',
     thumbnail: img18,
     images: [img18, img19],
-    rating: 4.7,
-    reviews: 95,
   },
   {
     _id: '8',
@@ -114,20 +100,17 @@ const fallbackProducts = [
     badge: 'Sale',
     thumbnail: img19,
     images: [img19, img16],
-    rating: 4.4,
-    reviews: 56,
   },
 ];
 
 const FeaturedProducts = () => {
   const navigate = useNavigate();
-  const { addToCart, buyNow, toggleWishlist, isInWishlist } = useCart();
+  const { toggleWishlist, isInWishlist, showToast } = useCart();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cardImageIndexMap, setCardImageIndexMap] = useState({}); // { [productId]: currentImageIndex }
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [quickViewIdx, setQuickViewIdx] = useState(0);
-  const [modalQty, setModalQty] = useState(1);
 
   const formatImg = (imgPath) => {
     if (!imgPath) return '';
@@ -356,21 +339,21 @@ const FeaturedProducts = () => {
                         <>
                           <button
                             type="button"
-                            className="btn btn-sm btn-light position-absolute start-0 ms-1.5 rounded-circle shadow-xs d-flex align-items-center justify-content-center p-0 border opacity-75 hover-opacity-100"
-                            style={{ width: '28px', height: '28px', zIndex: 2 }}
+                            className="product-card-arrow-btn prev"
                             onClick={slidePrev}
                             title="Previous image"
+                            aria-label="Previous image"
                           >
-                            <i className="bi bi-chevron-left small"></i>
+                            <i className="bi bi-chevron-left"></i>
                           </button>
                           <button
                             type="button"
-                            className="btn btn-sm btn-light position-absolute end-0 me-1.5 rounded-circle shadow-xs d-flex align-items-center justify-content-center p-0 border opacity-75 hover-opacity-100"
-                            style={{ width: '28px', height: '28px', zIndex: 2 }}
+                            className="product-card-arrow-btn next"
                             onClick={slideNext}
                             title="Next image"
+                            aria-label="Next image"
                           >
-                            <i className="bi bi-chevron-right small"></i>
+                            <i className="bi bi-chevron-right"></i>
                           </button>
                         </>
                       )}
@@ -447,100 +430,95 @@ const FeaturedProducts = () => {
                       </div>
                     </div>
 
-                    {/* Content Section */}
-                    <div className="card-body p-3 p-lg-4 d-flex flex-column bg-white text-start">
-                      {/* Category */}
-                      <span
-                        className="text-uppercase fw-bold text-muted mb-1"
-                        style={{ fontSize: '11px', letterSpacing: '1px' }}
-                      >
-                        {catName}
-                      </span>
-
-                      {/* Title */}
-                      <h6
-                        className="card-title fw-bold text-dark mb-2"
-                        style={{
-                          fontSize: '15px',
-                          minHeight: '44px',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {title}
-                      </h6>
-
-                      {/* Rating */}
-                      <div
-                        className="d-flex align-items-center mb-2 gap-1"
-                        style={{ fontSize: '12px' }}
-                      >
-                        <div className="text-warning d-flex">
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill"></i>
-                        </div>
-                        <span className="fw-bold ms-1 text-dark">4.8</span>
-                        <span className="text-muted">
-                          ({allImages.length} {allImages.length === 1 ? 'image' : 'images'})
+                    {/* Content Section - Modern E-commerce Redesign */}
+                    <div className="product-card-details d-flex flex-column text-start">
+                      {/* Top Meta: Category Pill + Stock Status */}
+                      <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <span className="product-cat-pill">
+                          {catName}
                         </span>
-                      </div>
-
-                      {/* Stock Status */}
-                      <div className="mb-2" style={{ fontSize: '12.5px' }}>
-                        {inStock ? (
-                          <span className="text-success fw-semibold">
-                            <i className="bi bi-check-circle-fill me-1"></i>In Stock
-                          </span>
-                        ) : (
-                          <span className="text-danger fw-semibold">
-                            <i className="bi bi-x-circle-fill me-1"></i>Out of Stock
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Price */}
-                      <div className="mt-auto d-flex flex-column mb-3">
-                        <div className="d-flex align-items-end gap-2">
-                          <span className="fw-bold fs-5" style={{ color: '#ff4500' }}>
-                            ₹{price.toLocaleString('en-IN')}
-                          </span>
-                          {comparePrice > price && (
-                            <span className="text-muted text-decoration-line-through small mb-1">
-                              ₹{comparePrice.toLocaleString('en-IN')}
-                            </span>
+                        <div className="stock-status-wrap">
+                          {inStock ? (
+                            <>
+                              <span className="stock-dot in-stock"></span>
+                              <span className="text-success">In Stock</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="stock-dot out-of-stock"></span>
+                              <span className="text-danger">Out of Stock</span>
+                            </>
                           )}
                         </div>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="d-flex gap-2 w-100 mt-auto">
-                        <button
-                          type="button"
-                          className="btn btn-outline-primary flex-grow-1 btn-sm py-2 fw-semibold rounded-2"
-                          disabled={true}
-                          style={{ fontSize: '12px', opacity: 0.6, cursor: 'not-allowed' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                        >
-                          <i className="bi bi-cart-plus me-1"></i> Add to Cart
-                        </button>
-                        <button
-                          type="button"
-                          className="btn flex-grow-1 btn-sm py-2 fw-semibold rounded-2 text-white"
-                          disabled={true}
-                          style={{ fontSize: '12px', backgroundColor: '#ff4500', border: 'none', opacity: 0.6, cursor: 'not-allowed' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                        >
-                          <i className="bi bi-lightning-fill me-1"></i> Buy Now
-                        </button>
+                      {/* Product Title */}
+                      <h6
+                        className="product-title-heading"
+                        onClick={() => openQuickView(item)}
+                        title={title}
+                      >
+                        {title}
+                      </h6>
+
+                      {/* Rating & Reviews (Only show if user has reviewed) */}
+                      {Boolean(item.reviews && Number(item.reviews) > 0 && item.rating) && (
+                        <div className="product-rating-box">
+                          <div className="product-rating-score-chip">
+                            <i className="bi bi-star-fill"></i>
+                            <span>{item.rating}</span>
+                          </div>
+                          <span className="product-review-count">
+                            ({item.reviews} {item.reviews === 1 ? 'review' : 'reviews'})
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Pricing & Action Buttons */}
+                      <div className="mt-auto">
+                        <div className="product-pricing-bar">
+                          <span className="product-price-current">
+                            ₹{price.toLocaleString('en-IN')}
+                          </span>
+                          {comparePrice > price && (
+                            <span className="product-price-compare">
+                              ₹{comparePrice.toLocaleString('en-IN')}
+                            </span>
+                          )}
+                          {discountPercent > 0 && (
+                            <span className="product-discount-pill">
+                              {discountPercent}% OFF
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Action Buttons: Add to Cart & Buy Now (Preview Mode - kuch work nahi ho) */}
+                        <div className="d-flex gap-2 w-100 mt-2">
+                          <button
+                            type="button"
+                            className="btn product-btn-cart flex-fill"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              showToast('Item added to cart (Preview Mode)', 'info');
+                            }}
+                            title="Add to Cart"
+                          >
+                            <i className="bi bi-cart-plus fs-6"></i>
+                            <span>Add to Cart</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn product-btn-buy flex-fill"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              showToast('Online ordering disabled. Contact us to order!', 'warning');
+                            }}
+                            title="Buy Now"
+                          >
+                            <i className="bi bi-lightning-charge-fill fs-6"></i>
+                            <span>Buy Now</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -612,32 +590,22 @@ const FeaturedProducts = () => {
                             <>
                               <button
                                 type="button"
-                                className="btn btn-white position-absolute start-0 ms-2 rounded-circle shadow-sm d-flex align-items-center justify-content-center p-0 border"
-                                style={{
-                                  width: '38px',
-                                  height: '38px',
-                                  backgroundColor: 'rgba(255,255,255,0.95)',
-                                  zIndex: 4,
-                                }}
+                                className="product-modal-arrow-btn prev"
                                 onClick={handlePrevImage}
                                 title="Previous image"
+                                aria-label="Previous image"
                               >
-                                <i className="bi bi-chevron-left fs-5"></i>
+                                <i className="bi bi-chevron-left"></i>
                               </button>
 
                               <button
                                 type="button"
-                                className="btn btn-white position-absolute end-0 me-2 rounded-circle shadow-sm d-flex align-items-center justify-content-center p-0 border"
-                                style={{
-                                  width: '38px',
-                                  height: '38px',
-                                  backgroundColor: 'rgba(255,255,255,0.95)',
-                                  zIndex: 4,
-                                }}
+                                className="product-modal-arrow-btn next"
                                 onClick={handleNextImage}
                                 title="Next image"
+                                aria-label="Next image"
                               >
-                                <i className="bi bi-chevron-right fs-5"></i>
+                                <i className="bi bi-chevron-right"></i>
                               </button>
 
                               {/* Slide Counter */}
@@ -723,62 +691,32 @@ const FeaturedProducts = () => {
                           </span>
                         </div>
 
-                        {/* Quantity Selector & Action Buttons */}
-                        <div className="d-flex align-items-center gap-3 mb-3">
-                          <span className="fw-semibold text-muted small">Quantity:</span>
-                          <div className="input-group input-group-sm" style={{ width: '110px' }}>
-                            <button
-                              className="btn btn-outline-secondary"
-                              type="button"
-                              onClick={() => setModalQty((q) => Math.max(1, q - 1))}
-                            >
-                              -
-                            </button>
-                            <input
-                              type="text"
-                              className="form-control text-center bg-white"
-                              value={modalQty}
-                              readOnly
-                            />
-                            <button
-                              className="btn btn-outline-secondary"
-                              type="button"
-                              onClick={() => setModalQty((q) => q + 1)}
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="mt-auto d-flex gap-2">
+                        {/* Modal Action Buttons: Add to Cart, Buy Now & Wishlist (Preview Mode) */}
+                        <div className="mt-auto d-flex gap-2 flex-wrap">
                           <button
                             type="button"
-                            className="btn btn-outline-primary flex-grow-1 py-2 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5 shadow-sm"
-                            disabled={true}
-                            style={{ opacity: 0.6, cursor: 'not-allowed' }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
+                            className="btn product-btn-cart flex-fill py-2.5 fw-semibold"
+                            onClick={() => showToast('Item added to cart (Preview Mode)', 'info')}
+                            title="Add to Cart"
                           >
-                            <i className="bi bi-cart-plus fs-6"></i> Add to Cart
+                            <i className="bi bi-cart-plus me-1.5 fs-5"></i>
+                            <span>Add to Cart</span>
                           </button>
 
                           <button
                             type="button"
-                            className="btn flex-grow-1 py-2 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5 text-white shadow-sm"
-                            disabled={true}
-                            style={{ backgroundColor: '#ff4500', border: 'none', opacity: 0.6, cursor: 'not-allowed' }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
+                            className="btn product-btn-buy flex-fill py-2.5 fw-semibold"
+                            onClick={() => showToast('Online ordering disabled. Contact us to order!', 'warning')}
+                            title="Buy Now"
                           >
-                            <i className="bi bi-lightning-fill fs-6"></i> Buy Now
+                            <i className="bi bi-lightning-charge-fill me-1.5 fs-5"></i>
+                            <span>Buy Now</span>
                           </button>
 
                           <button
                             type="button"
-                            className="btn p-2 border rounded-3 d-flex align-items-center justify-content-center"
-                            style={{ width: '42px', borderColor: '#e2e8f0', backgroundColor: '#f8fafc' }}
+                            className="btn p-2.5 border rounded-3 d-flex align-items-center justify-content-center"
+                            style={{ width: '46px', borderColor: '#e2e8f0', backgroundColor: '#f8fafc' }}
                             onClick={() => {
                               toggleWishlist(quickViewProduct);
                             }}

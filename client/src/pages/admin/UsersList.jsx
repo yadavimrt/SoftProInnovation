@@ -27,6 +27,10 @@ const UsersList = () => {
   const [modalLoading, setModalLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
 
+  // In-App Delete Confirmation Modal State
+  const [deleteModal, setDeleteModal] = useState({ show: false, id: null, name: '', email: '' });
+  const [deletingId, setDeletingId] = useState(null);
+
   // Fetch all users
   const fetchUsers = async () => {
     try {
@@ -156,16 +160,43 @@ const UsersList = () => {
   };
 
   // Delete User
-  const handleDelete = async (id, name) => {
-    if (window.confirm(`Are you sure you want to delete user "${name}"?`)) {
+  const openDeleteModal = (user) => {
+    setDeleteModal({
+      show: true,
+      id: user._id,
+      name: user.name || 'User',
+      email: user.email || ''
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
+    const targetId = deleteModal.id;
+    const targetName = deleteModal.name;
+    setDeletingId(targetId);
+
+    // Optimistically update list for instant feedback
+    setUsers((prev) => prev.filter((u) => u._id !== targetId));
+
+    try {
+      const res = await axios.delete(`http://localhost:5000/api/user/delete/${targetId}`);
+      showAlert('success', res.data?.message || `User "${targetName}" has been deleted.`);
+      setDeleteModal({ show: false, id: null, name: '', email: '' });
+      fetchUsers();
+    } catch (err) {
+      console.error('Failed to delete user with DELETE, trying POST fallback:', err);
       try {
-        await axios.delete(`http://localhost:5000/api/user/delete/${id}`);
-        setUsers((prev) => prev.filter((u) => u._id !== id));
-        showAlert('success', `User "${name}" has been deleted.`);
-      } catch (err) {
-        console.error('Failed to delete user', err);
-        showAlert('danger', 'Failed to delete user.');
+        const fallbackRes = await axios.post(`http://localhost:5000/api/user/delete/${targetId}`);
+        showAlert('success', fallbackRes.data?.message || `User "${targetName}" has been deleted.`);
+        setDeleteModal({ show: false, id: null, name: '', email: '' });
+        fetchUsers();
+      } catch (fallbackErr) {
+        const errMsg = fallbackErr.response?.data?.message || err.response?.data?.message || 'Failed to delete user.';
+        showAlert('danger', errMsg);
+        fetchUsers(); // Rollback optimistic update
       }
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -378,7 +409,7 @@ const UsersList = () => {
                           <button
                             type="button"
                             className="btn btn-sm btn-outline-danger rounded-2 p-1 px-2"
-                            onClick={() => handleDelete(user._id, userName)}
+                            onClick={() => openDeleteModal(user)}
                             title="Delete User"
                           >
                             <i className="bi bi-trash"></i>
@@ -527,6 +558,61 @@ const UsersList = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In-App Delete Confirmation Modal */}
+      {deleteModal.show && (
+        <div 
+          className="modal fade show d-block" 
+          tabIndex="-1" 
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', zIndex: 1060 }}
+          role="dialog"
+        >
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '440px' }}>
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden text-start">
+              <div className="modal-body p-4 text-center">
+                <div 
+                  className="rounded-circle bg-danger bg-opacity-10 text-danger d-inline-flex align-items-center justify-content-center mb-3"
+                  style={{ width: '64px', height: '64px' }}
+                >
+                  <i className="bi bi-trash3-fill fs-2"></i>
+                </div>
+                <h5 className="modal-title fw-bold text-dark mb-2">Delete User?</h5>
+                <p className="text-muted small mb-3">
+                  Are you sure you want to permanently delete user <strong className="text-dark">"{deleteModal.name}"</strong>{deleteModal.email ? ` (${deleteModal.email})` : ''}? This action cannot be undone.
+                </p>
+              </div>
+              <div className="modal-footer border-0 bg-light p-3 px-4 d-flex justify-content-end gap-2">
+                <button 
+                  type="button" 
+                  className="btn btn-outline-secondary px-3.5 py-2 fw-medium rounded-3"
+                  disabled={Boolean(deletingId)}
+                  onClick={() => setDeleteModal({ show: false, id: null, name: '', email: '' })}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-danger px-4 py-2 fw-semibold rounded-3 d-inline-flex align-items-center gap-2 shadow-sm"
+                  disabled={Boolean(deletingId)}
+                  onClick={confirmDelete}
+                >
+                  {deletingId ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-trash3"></i>
+                      <span>Yes, Delete User</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

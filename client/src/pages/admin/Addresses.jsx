@@ -10,6 +10,10 @@ const AdminAddresses = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
 
+  // Delete Modal State
+  const [deleteModal, setDeleteModal] = useState({ show: false, id: null, name: '', address: '' });
+  const [deletingId, setDeletingId] = useState(null);
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
@@ -151,18 +155,43 @@ const AdminAddresses = () => {
     }
   };
 
-  const handleDelete = async (id, recipientName) => {
-    if (window.confirm(`Are you sure you want to delete address for "${recipientName || 'this user'}"?`)) {
+  const openDeleteModal = (addr) => {
+    setDeleteModal({
+      show: true,
+      id: addr._id,
+      name: addr.name || 'Recipient',
+      address: `${addr.address || addr.Address || ''}, ${addr.city || ''}`
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
+    const targetId = deleteModal.id;
+    const targetName = deleteModal.name;
+    setDeletingId(targetId);
+
+    // Optimistically update list for instant feedback
+    setAddresses(prev => prev.filter(a => a._id !== targetId));
+
+    try {
+      const res = await axios.delete(`http://localhost:5000/api/address/delete/${targetId}`);
+      showAlert('success', res.data?.message || `Address for "${targetName}" deleted successfully!`);
+      setDeleteModal({ show: false, id: null, name: '', address: '' });
+      fetchAddresses();
+    } catch (err) {
+      console.error('Delete error, trying POST fallback:', err);
       try {
-        const res = await axios.delete(`http://localhost:5000/api/address/delete/${id}`);
-        if (res.data.success) {
-          showAlert('success', 'Address deleted successfully!');
-          fetchAddresses();
-        }
-      } catch (err) {
-        console.error('Delete error:', err);
-        showAlert('danger', 'Failed to delete address.');
+        const fallbackRes = await axios.post(`http://localhost:5000/api/address/delete/${targetId}`);
+        showAlert('success', fallbackRes.data?.message || `Address for "${targetName}" deleted successfully!`);
+        setDeleteModal({ show: false, id: null, name: '', address: '' });
+        fetchAddresses();
+      } catch (fallbackErr) {
+        const errMsg = fallbackErr.response?.data?.message || err.response?.data?.message || 'Failed to delete address.';
+        showAlert('danger', errMsg);
+        fetchAddresses(); // Rollback optimistic update
       }
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -425,7 +454,7 @@ const AdminAddresses = () => {
                             <button
                               className="btn btn-sm btn-light text-danger border rounded-circle"
                               style={{ width: '32px', height: '32px' }}
-                              onClick={() => handleDelete(addr._id, addr.name)}
+                              onClick={() => openDeleteModal(addr)}
                               title="Delete Address"
                             >
                               <i className="bi bi-trash-fill"></i>
@@ -624,6 +653,61 @@ const AdminAddresses = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In-App Delete Confirmation Modal */}
+      {deleteModal.show && (
+        <div 
+          className="modal fade show d-block" 
+          tabIndex="-1" 
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', zIndex: 1060 }}
+          role="dialog"
+        >
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '440px' }}>
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div className="modal-body p-4 text-center">
+                <div 
+                  className="rounded-circle bg-danger bg-opacity-10 text-danger d-inline-flex align-items-center justify-content-center mb-3"
+                  style={{ width: '64px', height: '64px' }}
+                >
+                  <i className="bi bi-trash3-fill fs-2"></i>
+                </div>
+                <h5 className="modal-title fw-bold text-dark mb-2">Delete Address?</h5>
+                <p className="text-muted small mb-3">
+                  Are you sure you want to permanently delete the address for <strong className="text-dark">"{deleteModal.name}"</strong>{deleteModal.address ? ` (${deleteModal.address})` : ''}? This action cannot be undone.
+                </p>
+              </div>
+              <div className="modal-footer border-0 bg-light p-3 px-4 d-flex justify-content-end gap-2">
+                <button 
+                  type="button" 
+                  className="btn btn-outline-secondary px-3.5 py-2 fw-medium rounded-3"
+                  disabled={Boolean(deletingId)}
+                  onClick={() => setDeleteModal({ show: false, id: null, name: '', address: '' })}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-danger px-4 py-2 fw-semibold rounded-3 d-inline-flex align-items-center gap-2 shadow-sm"
+                  disabled={Boolean(deletingId)}
+                  onClick={confirmDelete}
+                >
+                  {deletingId ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-trash3"></i>
+                      <span>Yes, Delete Address</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -25,6 +25,7 @@ import AddProduct from './pages/admin/AddProduct'
 
 import Addresses from './pages/user/Addresses'
 import AdminAddresses from './pages/admin/Addresses'
+import Profile from './pages/user/Profile'
 
 export const App = () => {
   return (
@@ -38,6 +39,8 @@ export const App = () => {
           <Route path='/cart' element={<Cart />}></Route>
           <Route path='/wishlist' element={<Wishlist />}></Route>
           <Route path='/addresses' element={<Addresses />}></Route>
+          <Route path='/profile' element={<Profile />}></Route>
+          <Route path='/account' element={<Profile />}></Route>
           <Route path='/login' element={<Login />}></Route>
           <Route path='/register' element={<Register />}></Route>
           <Route 

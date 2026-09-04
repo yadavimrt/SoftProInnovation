@@ -19,6 +19,8 @@ const AddCategory = ({ isEditMode: propIsEditMode }) => {
   const [fetchingExisting, setFetchingExisting] = useState(isEditMode);
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
   const [createdSuccess, setCreatedSuccess] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -146,6 +148,34 @@ const AddCategory = ({ isEditMode: propIsEditMode }) => {
       showAlert('danger', errMsg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      const res = await axios.delete(`http://localhost:5000/api/category/delete/${id}`);
+      showAlert('success', res.data?.message || 'Category deleted successfully!');
+      setShowDeleteModal(false);
+      setTimeout(() => {
+        navigate('/dashboard/categories');
+      }, 1000);
+    } catch (err) {
+      console.error('Delete error, trying POST fallback:', err);
+      try {
+        const fallbackRes = await axios.post(`http://localhost:5000/api/category/delete/${id}`);
+        showAlert('success', fallbackRes.data?.message || 'Category deleted successfully!');
+        setShowDeleteModal(false);
+        setTimeout(() => {
+          navigate('/dashboard/categories');
+        }, 1000);
+      } catch (fallbackErr) {
+        const errMsg = fallbackErr.response?.data?.message || err.response?.data?.message || 'Failed to delete category.';
+        showAlert('danger', errMsg);
+      }
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -438,17 +468,94 @@ const AddCategory = ({ isEditMode: propIsEditMode }) => {
 
                   <Link
                     to="/dashboard/categories"
-                    className="btn btn-link text-muted text-decoration-none ms-auto"
+                    className="btn btn-link text-muted text-decoration-none"
                     style={{ fontSize: '14px' }}
                   >
                     Cancel
                   </Link>
+
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger d-inline-flex align-items-center gap-1.5 px-3.5 py-2.5 ms-auto"
+                      style={{ borderRadius: '10px' }}
+                      disabled={loading || deleting}
+                      onClick={() => setShowDeleteModal(true)}
+                    >
+                      <i className="bi bi-trash3"></i> Delete Category
+                    </button>
+                  )}
                 </div>
               </form>
             )}
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div 
+          className="modal show d-block" 
+          tabIndex="-1" 
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', zIndex: 1060 }}
+          onClick={() => !deleting && setShowDeleteModal(false)}
+        >
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div className="modal-header border-0 bg-danger bg-opacity-10 p-4 pb-2">
+                <div className="d-flex align-items-center gap-2.5">
+                  <div className="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+                    <i className="bi bi-trash3-fill fs-5"></i>
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-dark mb-0">Delete Category</h5>
+                    <small className="text-muted">This action is permanent</small>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  disabled={deleting}
+                  onClick={() => setShowDeleteModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body p-4 pt-3">
+                <p className="mb-0 text-secondary" style={{ fontSize: '15px' }}>
+                  Are you sure you want to permanently delete category <strong className="text-dark">"{formData.category}"</strong>?
+                </p>
+              </div>
+              <div className="modal-footer border-0 bg-light p-3 px-4 d-flex justify-content-end gap-2">
+                <button 
+                  type="button" 
+                  className="btn btn-outline-secondary px-3.5 py-2 fw-medium rounded-3"
+                  disabled={deleting}
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-danger px-4 py-2 fw-semibold rounded-3 d-inline-flex align-items-center gap-2 shadow-sm"
+                  disabled={deleting}
+                  onClick={handleDeleteCategory}
+                >
+                  {deleting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-trash3"></i>
+                      <span>Yes, Delete Category</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -24,7 +24,7 @@ import img19 from '../../assets/19.png'
 
 const Product = () => {
   const navigate = useNavigate()
-  const { addToCart, buyNow, toggleWishlist, isInWishlist } = useCart()
+  const { toggleWishlist, isInWishlist, showToast } = useCart()
   const [searchParams, setSearchParams] = useSearchParams()
   const categoryFromUrl = searchParams.get('category')
   const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl || 'All')
@@ -37,6 +37,7 @@ const Product = () => {
   const [quickViewProduct, setQuickViewProduct] = useState(null)
   const [quickViewIdx, setQuickViewIdx] = useState(0)
   const [modalQty, setModalQty] = useState(1)
+  const [cardImgMap, setCardImgMap] = useState({})
 
   const formatImg = (imgPath) => {
     if (!imgPath) return 'https://placehold.co/400x400?text=No+Image'
@@ -239,6 +240,29 @@ const Product = () => {
               const pComparePrice = Number(item.compareprice) || 0
               const discountPercent = pComparePrice > pPrice ? Math.round(((pComparePrice - pPrice) / pComparePrice) * 100) : 0
 
+              const allImages = getProductImageList(item)
+              const currentIdx = cardImgMap[pId] ?? 0
+              const safeIdx = allImages.length > 0 ? currentIdx % allImages.length : 0
+              const currentActiveImg = allImages[safeIdx] || pImg
+
+              const slidePrev = (e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                setCardImgMap((prev) => ({
+                  ...prev,
+                  [pId]: (currentIdx - 1 + allImages.length) % allImages.length,
+                }))
+              }
+
+              const slideNext = (e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                setCardImgMap((prev) => ({
+                  ...prev,
+                  [pId]: (currentIdx + 1) % allImages.length,
+                }))
+              }
+
               return (
                 <div key={pId} className="col-12 col-sm-6 col-md-6 col-lg-3">
                   <div
@@ -291,16 +315,40 @@ const Product = () => {
                       <i className={`bi ${isInWishlist(pId) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'} fs-6`}></i>
                     </button>
 
-                    {/* Image Section with Quick View Hover */}
+                    {/* Image Section with Quick View Hover & Slider Arrows */}
                     <div className="product-img-box d-flex align-items-center justify-content-center p-4 position-relative overflow-hidden bg-white" style={{ height: '230px' }}>
                       <img
-                        src={pImg}
+                        src={currentActiveImg}
                         alt={item.name}
                         className="img-fluid"
                         style={{ maxHeight: '160px', objectFit: 'contain', transition: 'transform 0.4s ease' }}
                         onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
                         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                       />
+
+                      {/* Card Image Slide Arrows */}
+                      {allImages.length > 1 && (
+                        <>
+                          <button
+                            type="button"
+                            className="product-card-arrow-btn prev"
+                            onClick={slidePrev}
+                            title="Previous image"
+                            aria-label="Previous image"
+                          >
+                            <i className="bi bi-chevron-left"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="product-card-arrow-btn next"
+                            onClick={slideNext}
+                            title="Next image"
+                            aria-label="Next image"
+                          >
+                            <i className="bi bi-chevron-right"></i>
+                          </button>
+                        </>
+                      )}
                       
                       {/* Quick View on Hover */}
                       <div
@@ -320,90 +368,95 @@ const Product = () => {
                       </div>
                     </div>
 
-                    {/* Content Section */}
-                    <div className="card-body p-3 p-lg-4 d-flex flex-column bg-white text-start">
-                      {/* Category */}
-                      <span className="text-uppercase fw-bold text-muted mb-1" style={{ fontSize: '11px', letterSpacing: '1px' }}>
-                        {catName}
-                      </span>
-                      
-                      {/* Title */}
+                    {/* Content Section - Modern E-commerce Redesign */}
+                    <div className="product-card-details d-flex flex-column text-start">
+                      {/* Top Meta: Category Pill + Stock Status */}
+                      <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <span className="product-cat-pill">
+                          {catName}
+                        </span>
+                        <div className="stock-status-wrap">
+                          {item.stockstatus === 'In Stock' || item.stockstatus === 'active' || item.inStock !== false ? (
+                            <>
+                              <span className="stock-dot in-stock"></span>
+                              <span className="text-success">In Stock</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="stock-dot out-of-stock"></span>
+                              <span className="text-danger">{item.stockstatus || 'Out of Stock'}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Product Title */}
                       <h6
-                        className="card-title fw-bold text-dark mb-1"
-                        style={{
-                          fontSize: '15px',
-                          minHeight: '44px',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          cursor: 'pointer'
-                        }}
+                        className="product-title-heading"
                         onClick={() => openQuickView(item)}
                         title={item.name}
                       >
                         {item.name}
                       </h6>
-                      
-                      {/* Rating & Reviews */}
-                      <div className="d-flex align-items-center mb-2 gap-1" style={{ fontSize: '12px' }}>
-                        <div className="text-warning d-flex">
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill"></i>
-                          <i className={(item.rating || 4.8) >= 4.8 ? "bi bi-star-fill" : "bi bi-star-half"}></i>
+
+                      {/* Rating & Reviews (Only show if user has reviewed) */}
+                      {Boolean(item.reviews && Number(item.reviews) > 0 && item.rating) && (
+                        <div className="product-rating-box">
+                          <div className="product-rating-score-chip">
+                            <i className="bi bi-star-fill"></i>
+                            <span>{item.rating}</span>
+                          </div>
+                          <span className="product-review-count">
+                            ({item.reviews} {item.reviews === 1 ? 'review' : 'reviews'})
+                          </span>
                         </div>
-                        <span className="fw-bold ms-1 text-dark">{item.rating || '4.8'}</span>
-                      </div>
+                      )}
 
-                      {/* Stock Status */}
-                      <div className="mb-2" style={{ fontSize: '12.5px' }}>
-                        {item.stockstatus === 'In Stock' || item.stockstatus === 'active' || item.inStock !== false ? (
-                          <span className="text-success fw-semibold"><i className="bi bi-check-circle-fill me-1"></i>In Stock</span>
-                        ) : (
-                          <span className="text-danger fw-semibold"><i className="bi bi-x-circle-fill me-1"></i>{item.stockstatus || 'Out of Stock'}</span>
-                        )} 
-                      </div>
-
-                      {/* Price */}
-                      <div className="mt-auto d-flex flex-column mb-3 border-top pt-3">
-                        <div className="d-flex align-items-baseline gap-2">
-                          <span className="fw-bold fs-5" style={{ color: '#ff4500' }}>
+                      {/* Pricing & Action Buttons */}
+                      <div className="mt-auto">
+                        <div className="product-pricing-bar">
+                          <span className="product-price-current">
                             ₹{pPrice.toLocaleString('en-IN')}
                           </span>
                           {pComparePrice > pPrice && (
-                            <span className="text-muted text-decoration-line-through small">
+                            <span className="product-price-compare">
                               ₹{pComparePrice.toLocaleString('en-IN')}
                             </span>
                           )}
+                          {discountPercent > 0 && (
+                            <span className="product-discount-pill">
+                              {discountPercent}% OFF
+                            </span>
+                          )}
                         </div>
-                      </div>
 
-                      {/* Action Buttons: Add to Cart & Buy Now */}
-                      <div className="d-flex gap-2 w-100 mt-auto">
-                        <button
-                          type="button"
-                          className="btn btn-outline-primary flex-grow-1 btn-sm py-2 fw-semibold rounded-2"
-                          disabled={true}
-                          style={{ fontSize: '12px', opacity: 0.6, cursor: 'not-allowed' }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                          }}
-                        >
-                          <i className="bi bi-cart-plus me-1"></i> Add to Cart
-                        </button>
-                        <button
-                          type="button"
-                          className="btn flex-grow-1 btn-sm py-2 fw-semibold rounded-2 text-white"
-                          disabled={true}
-                          style={{ fontSize: '12px', backgroundColor: '#ff4500', border: 'none', opacity: 0.6, cursor: 'not-allowed' }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                          }}
-                        >
-                          <i className="bi bi-lightning-fill me-1"></i> Buy Now
-                        </button>
+                        {/* Action Buttons: Add to Cart & Buy Now (Preview Mode - kuch work nahi ho) */}
+                        <div className="d-flex gap-2 w-100 mt-2">
+                          <button
+                            type="button"
+                            className="btn product-btn-cart flex-fill"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              showToast('Item added to cart (Preview Mode)', 'info')
+                            }}
+                            title="Add to Cart"
+                          >
+                            <i className="bi bi-cart-plus fs-6"></i>
+                            <span>Add to Cart</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn product-btn-buy flex-fill"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              showToast('Online ordering disabled. Contact us to order!', 'warning')
+                            }}
+                            title="Buy Now"
+                          >
+                            <i className="bi bi-lightning-charge-fill fs-6"></i>
+                            <span>Buy Now</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -496,21 +549,21 @@ const Product = () => {
                           <>
                             <button
                               type="button"
-                              className="btn btn-white position-absolute start-0 ms-2 rounded-circle shadow-sm d-flex align-items-center justify-content-center p-0 border"
-                              style={{ width: '38px', height: '38px', backgroundColor: 'rgba(255, 255, 255, 0.95)', zIndex: 5 }}
+                              className="product-modal-arrow-btn prev"
                               onClick={handlePrevImage}
                               title="Previous Image"
+                              aria-label="Previous Image"
                             >
-                              <i className="bi bi-chevron-left fs-5"></i>
+                              <i className="bi bi-chevron-left"></i>
                             </button>
                             <button
                               type="button"
-                              className="btn btn-white position-absolute end-0 me-2 rounded-circle shadow-sm d-flex align-items-center justify-content-center p-0 border"
-                              style={{ width: '38px', height: '38px', backgroundColor: 'rgba(255, 255, 255, 0.95)', zIndex: 5 }}
+                              className="product-modal-arrow-btn next"
                               onClick={handleNextImage}
                               title="Next Image"
+                              aria-label="Next Image"
                             >
-                              <i className="bi bi-chevron-right fs-5"></i>
+                              <i className="bi bi-chevron-right"></i>
                             </button>
                             <span
                               className="position-absolute bottom-0 end-0 mb-2 me-2 badge bg-dark bg-opacity-75 text-white rounded-pill px-2.5 py-1"
@@ -578,17 +631,20 @@ const Product = () => {
                         {quickViewProduct.name}
                       </h4>
 
-                      {/* Rating & Reviews */}
-                      <div className="d-flex align-items-center gap-2 mb-3" style={{ fontSize: '13px' }}>
-                        <div className="text-warning d-flex">
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill"></i>
+                      {/* Rating & Reviews (Only show if user has reviewed) */}
+                      {Boolean(quickViewProduct.reviews && Number(quickViewProduct.reviews) > 0 && quickViewProduct.rating) && (
+                        <div className="d-flex align-items-center gap-2 mb-3" style={{ fontSize: '13px' }}>
+                          <div className="text-warning d-flex">
+                            <i className="bi bi-star-fill"></i>
+                            <i className="bi bi-star-fill"></i>
+                            <i className="bi bi-star-fill"></i>
+                            <i className="bi bi-star-fill"></i>
+                            <i className="bi bi-star-fill"></i>
+                          </div>
+                          <span className="fw-bold text-dark">{quickViewProduct.rating}</span>
+                          <span className="text-muted small">({quickViewProduct.reviews} reviews)</span>
                         </div>
-                        <span className="fw-bold text-dark">{quickViewProduct.rating || '4.8'}</span>
-                      </div>
+                      )}
 
                       {/* Price Section */}
                       <div className="p-3 rounded-3 mb-3" style={{ backgroundColor: '#fff5f0', border: '1px solid #ffe4d6' }}>
@@ -617,57 +673,26 @@ const Product = () => {
                          'High performance electronics component built with industry standards for reliability, durability, and top performance in modern circuits and robotics projects.'}
                       </p>
 
-                      {/* Quantity Selector & Action Buttons */}
-                      <div className="d-flex align-items-center gap-3 mb-3">
-                        <span className="fw-semibold text-muted small">Quantity:</span>
-                        <div className="input-group input-group-sm" style={{ width: '110px' }}>
-                          <button
-                            className="btn btn-outline-secondary"
-                            type="button"
-                            onClick={() => setModalQty((q) => Math.max(1, q - 1))}
-                          >
-                            -
-                          </button>
-                          <input
-                            type="text"
-                            className="form-control text-center bg-white"
-                            value={modalQty}
-                            readOnly
-                          />
-                          <button
-                            className="btn btn-outline-secondary"
-                            type="button"
-                            onClick={() => setModalQty((q) => q + 1)}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="d-flex gap-2">
+                      {/* Modal Action Buttons: Add to Cart, Buy Now & Wishlist (Preview Mode) */}
+                      <div className="d-flex gap-2 flex-wrap">
                         <button
                           type="button"
-                          className="btn btn-outline-primary flex-grow-1 py-2.5 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5 shadow-sm"
-                          disabled={true}
-                          style={{ opacity: 0.6, cursor: 'not-allowed' }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                          }}
+                          className="btn product-btn-cart flex-fill py-2.5 fw-semibold"
+                          onClick={() => showToast('Item added to cart (Preview Mode)', 'info')}
+                          title="Add to Cart"
                         >
-                          <i className="bi bi-cart-plus fs-6"></i> Add to Cart
+                          <i className="bi bi-cart-plus me-1.5 fs-5"></i>
+                          <span>Add to Cart</span>
                         </button>
 
                         <button
                           type="button"
-                          className="btn flex-grow-1 py-2.5 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1.5 text-white shadow-sm"
-                          disabled={true}
-                          style={{ backgroundColor: '#ff4500', border: 'none', opacity: 0.6, cursor: 'not-allowed' }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                          }}
+                          className="btn product-btn-buy flex-fill py-2.5 fw-semibold"
+                          onClick={() => showToast('Online ordering disabled. Contact us to order!', 'warning')}
+                          title="Buy Now"
                         >
-                          <i className="bi bi-lightning-fill fs-6"></i> Buy Now
+                          <i className="bi bi-lightning-charge-fill me-1.5 fs-5"></i>
+                          <span>Buy Now</span>
                         </button>
 
                         <button

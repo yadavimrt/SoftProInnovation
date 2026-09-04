@@ -6,7 +6,7 @@ import { useCart } from '../../context/CartContext';
 
 const Wishlist = () => {
   const navigate = useNavigate();
-  const { wishlistItems, removeFromWishlist, addToCart, buyNow } = useCart();
+  const { wishlistItems, removeFromWishlist } = useCart();
 
   const getImageSrc = (item) => {
     if (item.thumbnail) {
@@ -144,27 +144,19 @@ const Wishlist = () => {
 
                         {/* Action Buttons */}
                         <div className="d-flex gap-2">
+                          <Link
+                            to="/Product"
+                            className="btn product-btn-view flex-grow-1 py-2 fw-semibold rounded-2 text-decoration-none"
+                          >
+                            <i className="bi bi-eye me-1"></i> View Product
+                          </Link>
                           <button
                             type="button"
-                            className="btn btn-outline-primary flex-grow-1 btn-sm py-2 fw-semibold rounded-2"
-                            disabled={true}
-                            style={{ opacity: 0.6, cursor: 'not-allowed' }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
+                            className="btn btn-outline-danger btn-sm py-2 px-3 fw-semibold rounded-2"
+                            onClick={() => removeFromWishlist(item._id || item.id)}
+                            title="Remove from Wishlist"
                           >
-                            <i className="bi bi-cart-plus me-1"></i> Add to Cart
-                          </button>
-                          <button
-                            type="button"
-                            className="btn flex-grow-1 btn-sm py-2 fw-semibold rounded-2 text-white"
-                            disabled={true}
-                            style={{ backgroundColor: '#ff4500', border: 'none', opacity: 0.6, cursor: 'not-allowed' }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                          >
-                            <i className="bi bi-lightning-fill me-1"></i> Buy Now
+                            <i className="bi bi-trash3"></i>
                           </button>
                         </div>
                       </div>

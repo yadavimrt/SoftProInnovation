@@ -2,23 +2,41 @@
 
 .dashboard-container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   background-color: #f4f7fb;
 }
 
-/* Sidebar Styles */
+/* Sidebar Styles - Fixed in one place */
 .dashboard-sidebar {
   width: 260px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  left: 0;
   background-color: #1e3a8a;
   color: #ffffff;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  transition: all 0.3s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 100;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
+}
+
+.dashboard-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dashboard-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
 }
 
 .sidebar-profile {
-  padding: 30px 20px;
+  padding: 20px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -96,22 +114,32 @@
 }
 
 .sidebar-footer {
-  padding: 20px;
-  margin-top: auto;
+  padding: 14px 16px;
+  margin-top: 14px;
+  margin-bottom: 24px;
 }
 
 .logout-link {
-  color: #ef4444;
+  color: #fca5a5 !important;
   text-decoration: none;
   display: flex;
   align-items: center;
-  font-size: 14.5px;
-  font-weight: 500;
-  transition: all 0.2s;
+  justify-content: flex-start;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  transition: all 0.22s ease;
+  cursor: pointer;
 }
 
 .logout-link:hover {
-  color: #dc2626;
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
 }
 
 .logout-link i {
@@ -119,11 +147,31 @@
   font-size: 18px;
 }
 
-/* Main Content Styles */
+/* Main Content Styles - Slide / Scroll independently */
 .dashboard-main {
   flex: 1;
-  padding: 30px 40px;
+  height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding: 30px 40px;
+  scroll-behavior: smooth;
+}
+
+.dashboard-main::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dashboard-main::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.dashboard-main::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+}
+
+.dashboard-main::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .dashboard-header-title {
