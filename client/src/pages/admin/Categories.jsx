@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
+import { formatImg } from '../../utils/imageUrl';
 
 const Categories = () => {
-  const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -12,17 +13,23 @@ const Categories = () => {
   const [deleteModal, setDeleteModal] = useState({ show: false, id: null, name: '', productCount: 0 });
   const [deletingId, setDeletingId] = useState(null);
 
+  const showAlert = (type, message) => {
+    setAlert({ show: true, type, message });
+    setTimeout(() => {
+      setAlert({ show: false, type: '', message: '' });
+    }, 4000);
+  };
+
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/category/show');
+      const res = await axios.get(`${API_BASE_URL}/api/category/show`);
       if (Array.isArray(res.data)) {
         setCategories(res.data);
       } else {
         setCategories([]);
       }
-    } catch (err) {
-      console.error("Failed to fetch categories", err);
+    } catch {
       showAlert('danger', 'Failed to fetch categories from server.');
     } finally {
       setLoading(false);
@@ -32,13 +39,6 @@ const Categories = () => {
   useEffect(() => {
     fetchCategories();
   }, []);
-
-  const showAlert = (type, message) => {
-    setAlert({ show: true, type, message });
-    setTimeout(() => {
-      setAlert({ show: false, type: '', message: '' });
-    }, 4000);
-  };
 
   const openDeleteModal = (cat) => {
     setDeleteModal({
@@ -59,19 +59,18 @@ const Categories = () => {
       // Optimistically update list for instant feedback
       setCategories(prev => prev.filter(c => c._id !== targetId));
 
-      const res = await axios.delete(`http://localhost:5000/api/category/delete/${targetId}`);
+      const res = await axios.delete(`${API_BASE_URL}/api/category/delete/${targetId}`);
       showAlert('success', res.data?.message || `Category "${targetName}" deleted successfully!`);
       setDeleteModal({ show: false, id: null, name: '', productCount: 0 });
       fetchCategories();
-    } catch (err) {
-      console.error('Delete error, trying POST fallback:', err);
+    } catch {
       try {
-        const fallbackRes = await axios.post(`http://localhost:5000/api/category/delete/${targetId}`);
+        const fallbackRes = await axios.post(`${API_BASE_URL}/api/category/delete/${targetId}`);
         showAlert('success', fallbackRes.data?.message || `Category "${targetName}" deleted successfully!`);
         setDeleteModal({ show: false, id: null, name: '', productCount: 0 });
         fetchCategories();
       } catch (fallbackErr) {
-        const errMsg = fallbackErr.response?.data?.message || err.response?.data?.message || 'Failed to delete category.';
+        const errMsg = fallbackErr.response?.data?.message || 'Failed to delete category.';
         showAlert('danger', errMsg);
         fetchCategories();
       }
@@ -281,7 +280,7 @@ const Categories = () => {
                 filteredCategories.map((cat, index) => {
                   const catName = cat.category || cat.name || 'Unnamed Category';
                   const isActive = (cat.status || 'active').toLowerCase() === 'active';
-                  const imgUrl = cat.image ? `http://localhost:5000/${cat.image.replace(/\\/g, '/')}` : null;
+                  const imgUrl = formatImg(cat.image, null);
                   return (
                     <tr key={cat._id || index}>
                       <td className="text-center text-muted fw-semibold" style={{ fontSize: '13px' }}>

@@ -1,17 +1,33 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import logo from '../../assets/logo.png';
+import { formatImg } from '../../utils/imageUrl';
 import './Dashboard.css';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
-  const adminName = localStorage.getItem('name') || 'Administrator';
+  const [adminName, setAdminName] = useState(localStorage.getItem('name') || 'Administrator');
+  const [adminPicture, setAdminPicture] = useState(localStorage.getItem('picture') || '');
   const avatarInitials = adminName.slice(0, 2).toUpperCase();
+
+  useEffect(() => {
+    const syncAdmin = () => {
+      setAdminName(localStorage.getItem('name') || 'Administrator');
+      setAdminPicture(localStorage.getItem('picture') || '');
+    };
+    window.addEventListener('userSessionChange', syncAdmin);
+    window.addEventListener('storage', syncAdmin);
+    return () => {
+      window.removeEventListener('userSessionChange', syncAdmin);
+      window.removeEventListener('storage', syncAdmin);
+    };
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('name');
+    localStorage.removeItem('picture');
     localStorage.removeItem('adminId');
     navigate('/admin/login');
   };
@@ -29,11 +45,36 @@ const DashboardLayout = () => {
           </Link>
         </div>
 
-        <div className="sidebar-profile text-center">
-          <div className="avatar-circle mx-auto">{avatarInitials}</div>
-          <h6 className="mb-1 fw-bold">{adminName}</h6>
-          <p className="text-white-50 mb-2" style={{ fontSize: '13px' }}>Admin Access</p>
-          <span className="admin-badge">ADMIN</span>
+        <div className="sidebar-profile-card text-center">
+          <div className="sidebar-avatar-container mx-auto mb-2">
+            {adminPicture ? (
+              <img
+                src={formatImg(adminPicture)}
+                alt={adminName}
+                className="sidebar-avatar-img"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const fallback = e.currentTarget.parentElement?.querySelector('.sidebar-avatar-fallback');
+                  if (fallback) fallback.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div
+              className="sidebar-avatar-fallback"
+              style={{ display: adminPicture ? 'none' : 'flex' }}
+            >
+              {avatarInitials}
+            </div>
+            <span className="sidebar-avatar-status" title="Active Session"></span>
+          </div>
+
+          <h6 className="sidebar-admin-name text-capitalize text-truncate mb-0" title={adminName}>
+            {adminName}
+          </h6>
+          
+          <div className="sidebar-admin-badge-wrap">
+            <span className="sidebar-admin-badge">Admin</span>
+          </div>
         </div>
         
         <div className="sidebar-nav-title text-uppercase">Admin Controls</div>

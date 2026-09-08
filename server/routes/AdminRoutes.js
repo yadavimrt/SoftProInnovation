@@ -1,29 +1,8 @@
-const express=require('express');
-const Router=express.Router();
-const Admin=require('../model/admin');
-const jwt = require('jsonwebtoken')
-
-// Router.post('/regsiter',async(req,res)=>{
-   
-//  try{
-//         const {name,email,password}=req.body;
-      
-//         const a =await Admin.findOne({email});
-//         if(a){
-//             return res.json({message:"Admin Already Registered"})
-//         }
-//           console.log(req.body);
-//         const data=await Admin.create(req.body);
-//          console.log("data",data)
-//          return res.json({"message":"Email  Registered"});
-//     }
-// catch(error){
-//     return res.json({"message":"Email Not Registered"}); 
-// }
-
-
-// });
-
+const express = require('express');
+const Router = express.Router();
+const Admin = require('../model/Admin');
+const User = require('../model/User');
+const jwt = require('jsonwebtoken');
 
 Router.post('/login', async (req, res) => {
     try {
@@ -47,42 +26,51 @@ Router.post('/login', async (req, res) => {
                 { expiresIn: '1d' }
             );
 
+            // Find or link User account for this admin so profile and address work seamlessly
+            let userDoc = await User.findOne({ email: cleanEmail });
+            if (!userDoc) {
+                userDoc = new User({
+                    name: data.name,
+                    email: cleanEmail,
+                    password: data.password,
+                    mobile: '',
+                    status: 'active'
+                });
+                await userDoc.save();
+            }
+
             return res.json({
                 msg: "Sucess",
                 token: token,
                 role: "admin",
                 name: data.name,
-                adminId: data._id
+                adminId: data._id,
+                user: {
+                    _id: userDoc._id,
+                    name: userDoc.name,
+                    email: userDoc.email,
+                    mobile: userDoc.mobile || '',
+                    picture: userDoc.picture || '',
+                    status: userDoc.status || 'active',
+                    gender: userDoc.gender || 'other'
+                }
             });
         } else {
             return res.status(400).json({ msg: "Password is Incorrect" });
         }
     } catch (er) {
-        console.error("Admin login error:", er);
         return res.status(500).json({ msg: "Server error: " + (er.message || "Database connection error") });
     }
 });
-
-
-
-        
-
 
 Router.get("/show", async (req, res) => {
     try {
         const data = await Admin.find();
         res.json(data);
-    } catch (error) {
+    } catch {
         res.status(500).json({ message: "Error fetching admin data" });
     }
 });
-
-
-
-
-
-
-
 
 Router.put("/update/:id", async (req, res) => {
     try {
@@ -109,6 +97,7 @@ Router.patch('/patch/:id', async (req, res) => {
         res.status(500).json({ message: "Error patching admin", error: error.message });
     }
 });
+
 Router.delete("/delete/:id", async (req, res) => {
     try {
         await Admin.findByIdAndDelete(req.params.id);
@@ -118,8 +107,4 @@ Router.delete("/delete/:id", async (req, res) => {
     }
 });
 
-module.exports=Router;
-
-
-
-
+module.exports = Router;

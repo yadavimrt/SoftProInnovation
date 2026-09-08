@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import logo from '../../assets/logo.png';
+import { API_BASE_URL } from '../../config/api';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ const Register = () => {
       formData.append('password', password);
       if (picture) formData.append('picture', picture);
 
-      const response = await axios.post('http://localhost:5000/api/user/register', formData);
+      const response = await axios.post(`${API_BASE_URL}/api/user/register`, formData);
 
       if (response.data.success) {
         setSuccess(response.data.message || 'Registration successful! Redirecting to login...');

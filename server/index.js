@@ -4,7 +4,7 @@ const dotenv = require('dotenv')
 const path = require('path');
 dotenv.config({ quiet: true });
 const app = express();
-const adminRoutes = require('./routes/adminRoutes');
+const AdminRoutes = require('./routes/AdminRoutes');
 const mongoDB = require('./config/db');
 mongoDB();
 
@@ -14,12 +14,13 @@ app.use(cors());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 //API'S STARTED
-app.use('/api/admin', adminRoutes);
-app.use('/api/category', require('./routes/categoryRoutes'));
-app.use('/api/user', require('./routes/userRoutes'));
-app.use('/api/product', require('./routes/productRoutes'));
-app.use('/api/cart', require('./routes/cartRoutes'));
-app.use('/api/address', require('./routes/addressRoutes'));
+app.use('/api/admin', AdminRoutes);
+app.use('/api/category', require('./routes/CategoryRoutes'));
+app.use('/api/user', require('./routes/UserRoutes'));
+app.use('/api/product', require('./routes/ProductRoutes'));
+app.use('/api/cart', require('./routes/CartRoutes'));
+app.use('/api/address', require('./routes/AddressRoutes'));
+app.use('/api/order', require('./routes/OrderRoutes'));
 
 app.listen(process.env.PORT || 5000, () => {
     console.log(`Server is running on port ${process.env.PORT || 5000}`);

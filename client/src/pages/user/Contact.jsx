@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Link } from 'react-router-dom'
@@ -9,10 +9,17 @@ const Contact = () => {
   const [category, setCategory] = useState('')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
+  const [submitted, setSubmitted] = useState(false)
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    console.log('Form submitted:', { fullName, email, category, subject, message })
+    setSubmitted(true)
+    setFullName('')
+    setEmail('')
+    setCategory('')
+    setSubject('')
+    setMessage('')
+    setTimeout(() => setSubmitted(false), 5000)
   }
 
   return (
@@ -242,6 +249,13 @@ const Contact = () => {
                       required
                     ></textarea>
                   </div>
+
+                  {submitted && (
+                    <div className="alert alert-success d-flex align-items-center mb-3 py-2 px-3 rounded-2" role="alert">
+                      <i className="bi bi-check-circle-fill me-2"></i>
+                      <span>Thank you! Your message has been sent successfully. We will get back to you shortly.</span>
+                    </div>
+                  )}
 
                   {/* Submit Button */}
                   <button type="submit" className="btn btn-orangered-about px-4 py-2.5 rounded-3 text-decoration-none">

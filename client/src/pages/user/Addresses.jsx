@@ -1,12 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import { API_BASE_URL } from '../../config/api';
 
 const Addresses = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const location = useLocation();
+  const checkoutFormOpened = useRef(false);
+  const [user] = useState(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
@@ -37,28 +47,10 @@ const Addresses = () => {
     setTimeout(() => setAlert({ show: false, type: '', message: '' }), 4000);
   };
 
-  // Get current logged-in user
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    if (storedUser && token) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        fetchAddresses(parsedUser._id || parsedUser.id);
-      } catch (e) {
-        console.error('Error parsing user data:', e);
-        navigate('/login');
-      }
-    } else {
-      navigate('/login');
-    }
-  }, [navigate]);
-
   const fetchAddresses = async (userId) => {
     setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/address/user/${userId}`);
+      const res = await axios.get(`${API_BASE_URL}/api/address/user/${userId}`);
       if (res.data && res.data.addresses) {
         setAddresses(res.data.addresses);
       } else if (Array.isArray(res.data)) {
@@ -73,6 +65,23 @@ const Addresses = () => {
       setLoading(false);
     }
   };
+
+  // Get current logged-in user
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    if (storedUser && token) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        fetchAddresses(parsedUser._id || parsedUser.id);
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+        navigate('/login');
+      }
+    } else {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   const handleOpenAddModal = () => {
     setEditingId(null);
@@ -90,6 +99,14 @@ const Addresses = () => {
     });
     setShowModal(true);
   };
+
+  useEffect(() => {
+    if (!loading && location.state?.openForm && !checkoutFormOpened.current) {
+      checkoutFormOpened.current = true;
+      handleOpenAddModal();
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [loading, location.pathname, location.state, navigate]);
 
   const handleOpenEditModal = (addr) => {
     setEditingId(addr._id);
@@ -130,7 +147,7 @@ const Addresses = () => {
     try {
       if (editingId) {
         // Update existing address
-        const res = await axios.put(`http://localhost:5000/api/address/update/${editingId}`, {
+        const res = await axios.put(`http://localhost:5000/api/address/update/${editingId}`,{
           ...formData,
           user_id: userId
         });
@@ -189,7 +206,6 @@ const Addresses = () => {
   const confirmDelete = async () => {
     if (!deleteModal.id) return;
     const targetId = deleteModal.id;
-    const targetName = deleteModal.name;
     const userId = user?._id || user?.id;
     setDeletingId(targetId);
 
@@ -197,22 +213,20 @@ const Addresses = () => {
     setAddresses(prev => prev.filter(a => a._id !== targetId));
 
     try {
-      const res = await axios.delete(`http://localhost:5000/api/address/delete/${targetId}`);
+      const res = await axios.delete(`${API_BASE_URL}/api/address/delete/${targetId}`);
       if (res.data?.success) {
         showAlert('success', res.data?.message || 'Address deleted successfully!');
         setDeleteModal({ show: false, id: null, name: '', address: '' });
         if (userId) fetchAddresses(userId);
       }
-    } catch (err) {
-      console.error('Delete error, attempting POST fallback:', err);
+    } catch {
       try {
-        const fallbackRes = await axios.post(`http://localhost:5000/api/address/delete/${targetId}`);
+        const fallbackRes = await axios.post(`${API_BASE_URL}/api/address/delete/${targetId}`);
         showAlert('success', fallbackRes.data?.message || 'Address deleted successfully!');
         setDeleteModal({ show: false, id: null, name: '', address: '' });
         if (userId) fetchAddresses(userId);
-      } catch (fallbackErr) {
-        const errMsg = fallbackErr.response?.data?.message || err.response?.data?.message || 'Failed to delete address.';
-        showAlert('danger', errMsg);
+      } catch {
+        showAlert('danger', 'Failed to delete address.');
         if (userId) fetchAddresses(userId); // Rollback
       }
     } finally {

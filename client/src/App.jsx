@@ -1,9 +1,9 @@
-import React from 'react'
 import Home from './pages/user/Home'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import About from './pages/user/About'
 import Contact from './pages/user/Contact'
 import Product from './pages/user/Product'
+import ProductDetail from './pages/user/ProductDetail'
 import Cart from './pages/user/Cart'
 import Wishlist from './pages/user/Wishlist'
 import Login from './pages/user/Login'
@@ -26,6 +26,7 @@ import AddProduct from './pages/admin/AddProduct'
 import Addresses from './pages/user/Addresses'
 import AdminAddresses from './pages/admin/Addresses'
 import Profile from './pages/user/Profile'
+import Payment from './pages/user/Payment'
 
 export const App = () => {
   return (
@@ -36,9 +37,11 @@ export const App = () => {
           <Route path='/about' element={<About />}></Route>
           <Route path='/contact' element={<Contact />}></Route>
           <Route path='/Product' element={<Product />}></Route>
+          <Route path='/product/:id' element={<ProductDetail />}></Route>
           <Route path='/cart' element={<Cart />}></Route>
           <Route path='/wishlist' element={<Wishlist />}></Route>
           <Route path='/addresses' element={<Addresses />}></Route>
+          <Route path='/payment' element={<Payment />}></Route>
           <Route path='/profile' element={<Profile />}></Route>
           <Route path='/account' element={<Profile />}></Route>
           <Route path='/login' element={<Login />}></Route>

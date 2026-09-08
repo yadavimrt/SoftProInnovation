@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { API_BASE_URL } from '../../config/api';
+import { formatImg } from '../../utils/imageUrl';
 
 const Inventory = () => {
   const [products, setProducts] = useState([]);
@@ -15,17 +16,23 @@ const Inventory = () => {
   const [updating, setUpdating] = useState(false);
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
 
+  const showAlert = (type, message) => {
+    setAlert({ show: true, type, message });
+    setTimeout(() => {
+      setAlert({ show: false, type: '', message: '' });
+    }, 3000);
+  };
+
   const fetchInventory = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/api/product/show');
+      const res = await axios.get(`${API_BASE_URL}/api/product/show`);
       if (Array.isArray(res.data)) {
         setProducts(res.data);
       } else {
         setProducts([]);
       }
-    } catch (err) {
-      console.error('Failed to fetch inventory', err);
+    } catch {
       setProducts([]);
     } finally {
       setLoading(false);
@@ -35,13 +42,6 @@ const Inventory = () => {
   useEffect(() => {
     fetchInventory();
   }, []);
-
-  const showAlert = (type, message) => {
-    setAlert({ show: true, type, message });
-    setTimeout(() => {
-      setAlert({ show: false, type: '', message: '' });
-    }, 3000);
-  };
 
   const handleOpenEditStock = (prod) => {
     setEditingProduct(prod);
@@ -64,7 +64,7 @@ const Inventory = () => {
 
     try {
       setUpdating(true);
-      await axios.patch(`http://localhost:5000/api/product/patch/${editingProduct._id}`, {
+      await axios.patch(`${API_BASE_URL}/api/product/patch/${editingProduct._id}`, {
         stockquantity: qty,
         stockstatus: autoStatus,
       });
@@ -79,8 +79,7 @@ const Inventory = () => {
 
       showAlert('success', `Stock updated for ${editingProduct.name}!`);
       handleCloseModal();
-    } catch (err) {
-      console.error('Failed to update stock', err);
+    } catch {
       showAlert('danger', 'Failed to update stock in database.');
     } finally {
       setUpdating(false);
@@ -268,7 +267,7 @@ const Inventory = () => {
                   const isOut = qty === 0 || (prod.stockstatus || '').toLowerCase() === 'out of stock';
                   const isLow = qty > 0 && (qty <= 5 || (prod.stockstatus || '').toLowerCase() === 'low stock');
                   const catName = prod.category_id?.category || prod.category || 'General';
-                  const thumbUrl = prod.thumbnail ? `http://localhost:5000/${prod.thumbnail.replace(/\\/g, '/')}` : null;
+                  const thumbUrl = formatImg(prod.thumbnail, null);
 
                   return (
                     <tr key={prod._id || index}>

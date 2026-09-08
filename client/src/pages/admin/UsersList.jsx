@@ -1,11 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
+import { formatImg } from '../../utils/imageUrl';
 
 const isUserActive = (status) => {
   if (status === false || status === 'inactive' || status === 'Inactive' || status === 0) {
     return false;
   }
   return true;
+};
+
+const getUserImgSrc = (picture) => {
+  if (!picture || picture === 'https://example.com/default-profile.png') return '';
+  return formatImg(picture, '');
 };
 
 const UsersList = () => {
@@ -17,6 +24,9 @@ const UsersList = () => {
   // Modal State for Add / Edit User
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [pictureFile, setPictureFile] = useState(null);
+  const [picturePreview, setPicturePreview] = useState('');
+  const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -24,6 +34,7 @@ const UsersList = () => {
     password: '',
     status: 'active',
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
 
@@ -31,18 +42,24 @@ const UsersList = () => {
   const [deleteModal, setDeleteModal] = useState({ show: false, id: null, name: '', email: '' });
   const [deletingId, setDeletingId] = useState(null);
 
+  const showAlert = (type, message) => {
+    setAlert({ show: true, type, message });
+    setTimeout(() => {
+      setAlert({ show: false, type: '', message: '' });
+    }, 3000);
+  };
+
   // Fetch all users
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/api/user/show');
+      const res = await axios.get(`${API_BASE_URL}/api/user/show`);
       if (Array.isArray(res.data)) {
         setUsers(res.data);
       } else {
         setUsers([]);
       }
-    } catch (err) {
-      console.error('Failed to fetch users', err);
+    } catch {
       showAlert('danger', 'Failed to load users from server.');
     } finally {
       setLoading(false);
@@ -52,13 +69,6 @@ const UsersList = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
-
-  const showAlert = (type, message) => {
-    setAlert({ show: true, type, message });
-    setTimeout(() => {
-      setAlert({ show: false, type: '', message: '' });
-    }, 3000);
-  };
 
   // Open Modal for Add
   const handleOpenAdd = () => {
@@ -70,25 +80,33 @@ const UsersList = () => {
       password: '',
       status: 'active',
     });
+    setPictureFile(null);
+    setPicturePreview('');
     setIsModalOpen(true);
   };
 
   // Open Modal for Edit
   const handleOpenEdit = (user) => {
     setEditingUser(user);
+    const cleanMobile = (user.mobile || '').replace(/^\+91\s*/, '').trim();
     setFormData({
       name: user.name || '',
       email: user.email || '',
-      mobile: user.mobile || '',
+      mobile: cleanMobile,
       password: '',
       status: isUserActive(user.status) ? 'active' : 'inactive',
     });
+    setPictureFile(null);
+    setPicturePreview(user.picture ? getUserImgSrc(user.picture) : '');
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingUser(null);
+    setPictureFile(null);
+    setPicturePreview('');
+    setShowPassword(false);
   };
 
   // Submit Add / Edit Form
@@ -106,27 +124,39 @@ const UsersList = () => {
 
     try {
       setModalLoading(true);
-      if (editingUser) {
-        // Update user
-        const updatePayload = {
-          name: formData.name,
-          email: formData.email,
-          mobile: formData.mobile,
-          status: formData.status,
-        };
-        if (formData.password.trim()) {
-          updatePayload.password = formData.password;
-        }
+      const submitData = new FormData();
+      submitData.append('name', formData.name.trim());
+      submitData.append('email', formData.email.trim());
 
-        const res = await axios.put(`http://localhost:5000/api/user/update/${editingUser._id}`, updatePayload);
+      const rawMobile = formData.mobile.trim().replace(/^\+91\s*/, '');
+      const formattedMobile = rawMobile ? `+91 ${rawMobile}` : '';
+      submitData.append('mobile', formattedMobile);
+
+      submitData.append('status', formData.status);
+      if (formData.password?.trim()) {
+        submitData.append('password', formData.password.trim());
+      }
+      if (pictureFile) {
+        submitData.append('picture', pictureFile);
+      }
+
+      if (editingUser) {
+        const res = await axios.put(
+          `${API_BASE_URL}/api/user/update/${editingUser._id}`,
+          submitData,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
         if (res.data) {
           showAlert('success', 'User updated successfully!');
           fetchUsers();
           handleCloseModal();
         }
       } else {
-        // Add new user
-        const res = await axios.post('http://localhost:5000/api/user/register', formData);
+        const res = await axios.post(
+          `${API_BASE_URL}/api/user/register`,
+          submitData,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
         if (res.data?.success || res.status === 201) {
           showAlert('success', 'New user added successfully!');
           fetchUsers();
@@ -136,7 +166,6 @@ const UsersList = () => {
         }
       }
     } catch (err) {
-      console.error('Error saving user:', err);
       showAlert('danger', err.response?.data?.message || 'Error occurred while saving user.');
     } finally {
       setModalLoading(false);
@@ -148,13 +177,12 @@ const UsersList = () => {
     const currentActive = isUserActive(user.status);
     const newStatus = currentActive ? 'inactive' : 'active';
     try {
-      await axios.patch(`http://localhost:5000/api/user/patch/${user._id}`, { status: newStatus });
+      await axios.patch(`${API_BASE_URL}/api/user/patch/${user._id}`, { status: newStatus });
       setUsers((prev) =>
         prev.map((u) => (u._id === user._id ? { ...u, status: newStatus } : u))
       );
       showAlert('success', `User status updated to ${newStatus}!`);
-    } catch (err) {
-      console.error('Failed to update status', err);
+    } catch {
       showAlert('danger', 'Failed to update user status.');
     }
   };
@@ -179,19 +207,18 @@ const UsersList = () => {
     setUsers((prev) => prev.filter((u) => u._id !== targetId));
 
     try {
-      const res = await axios.delete(`http://localhost:5000/api/user/delete/${targetId}`);
+      const res = await axios.delete(`${API_BASE_URL}/api/user/delete/${targetId}`);
       showAlert('success', res.data?.message || `User "${targetName}" has been deleted.`);
       setDeleteModal({ show: false, id: null, name: '', email: '' });
       fetchUsers();
-    } catch (err) {
-      console.error('Failed to delete user with DELETE, trying POST fallback:', err);
+    } catch {
       try {
-        const fallbackRes = await axios.post(`http://localhost:5000/api/user/delete/${targetId}`);
+        const fallbackRes = await axios.post(`${API_BASE_URL}/api/user/delete/${targetId}`);
         showAlert('success', fallbackRes.data?.message || `User "${targetName}" has been deleted.`);
         setDeleteModal({ show: false, id: null, name: '', email: '' });
         fetchUsers();
       } catch (fallbackErr) {
-        const errMsg = fallbackErr.response?.data?.message || err.response?.data?.message || 'Failed to delete user.';
+        const errMsg = fallbackErr.response?.data?.message || 'Failed to delete user.';
         showAlert('danger', errMsg);
         fetchUsers(); // Rollback optimistic update
       }
@@ -298,10 +325,10 @@ const UsersList = () => {
             <thead className="table-light">
               <tr>
                 <th style={{ width: '6%' }} className="text-center">S.No</th>
-                <th style={{ width: '25%' }}>Name</th>
-                <th style={{ width: '25%' }}>Email</th>
+                <th style={{ width: '28%' }}>Name</th>
+                <th style={{ width: '24%' }}>Email</th>
                 <th style={{ width: '18%' }}>Mobile</th>
-                <th style={{ width: '14%' }}>Status</th>
+                <th style={{ width: '12%' }}>Status</th>
                 <th style={{ width: '12%' }} className="text-end">Actions</th>
               </tr>
             </thead>
@@ -326,10 +353,12 @@ const UsersList = () => {
                 filteredUsers.map((user, index) => {
                   const isActive = isUserActive(user.status);
                   const userName = user.name || 'Unnamed User';
-                  const userInitial = userName.charAt(0).toUpperCase();
                   const userEmail = user.email || 'No email';
-                  const userMobile = user.mobile || 'N/A';
+                  const userMobile = user.mobile
+                    ? (user.mobile.startsWith('+91') ? user.mobile : `+91 ${user.mobile}`)
+                    : 'N/A';
                   const userIdStr = user._id ? String(user._id).slice(-6) : 'N/A';
+                  const userImg = getUserImgSrc(user.picture);
 
                   return (
                     <tr key={user._id || index}>
@@ -340,20 +369,36 @@ const UsersList = () => {
 
                       {/* Name */}
                       <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <div
-                            className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
-                            style={{
-                              width: '36px',
-                              height: '36px',
-                              backgroundColor: '#3945E0',
-                              fontSize: '14px',
-                            }}
-                          >
-                            {userInitial}
-                          </div>
-                          <div>
-                            <strong className="text-dark d-block" style={{ fontSize: '14.5px' }}>
+                        <div className="d-flex align-items-center" style={{ gap: '12px' }}>
+                          {userImg ? (
+                            <img
+                              src={userImg}
+                              alt={userName}
+                              className="rounded-circle flex-shrink-0 border shadow-xs"
+                              style={{
+                                width: '40px',
+                                height: '40px',
+                                objectFit: 'cover',
+                              }}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=3945E0&color=fff&size=128&bold=true`;
+                              }}
+                            />
+                          ) : (
+                            <img
+                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=3945E0&color=fff&size=128&bold=true`}
+                              alt={userName}
+                              className="rounded-circle flex-shrink-0 border shadow-xs"
+                              style={{
+                                width: '40px',
+                                height: '40px',
+                                objectFit: 'cover',
+                              }}
+                            />
+                          )}
+                          <div style={{ minWidth: 0 }}>
+                            <strong className="text-dark d-block text-capitalize" style={{ fontSize: '14px', lineHeight: '1.2' }}>
                               {userName}
                             </strong>
                             <small className="text-muted" style={{ fontSize: '11px' }}>
@@ -438,111 +483,297 @@ const UsersList = () => {
         >
           <div
             className="modal-dialog modal-dialog-centered"
-            style={{ maxWidth: '480px' }}
+            style={{ maxWidth: '500px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden text-start">
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden text-start" style={{ borderRadius: '20px' }}>
               {/* Modal Header */}
-              <div className="modal-header bg-light py-3 px-4 border-bottom">
-                <h5 className="modal-title fw-bold text-dark mb-0" style={{ fontSize: '16px' }}>
-                  {editingUser ? 'Edit User Details' : 'Add New User'}
-                </h5>
+              <div className="modal-header border-0 pb-0 px-4 pt-4 d-flex align-items-start justify-content-between">
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    className="d-flex align-items-center justify-content-center rounded-3 text-white shadow-sm flex-shrink-0"
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      background: 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)',
+                      fontSize: '20px',
+                    }}
+                  >
+                    <i className={`bi ${editingUser ? 'bi-person-gear' : 'bi-person-plus-fill'}`}></i>
+                  </div>
+                  <div>
+                    <h5 className="fw-bold text-dark mb-0" style={{ fontSize: '18px', letterSpacing: '-0.3px' }}>
+                      {editingUser ? 'Edit User Details' : 'Add New User'}
+                    </h5>
+                    <p className="text-muted small mb-0 mt-0.5" style={{ fontSize: '12.5px' }}>
+                      {editingUser ? 'Update account info, credentials and active status' : 'Fill in the details to create a new user account'}
+                    </p>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  className="btn-close shadow-none"
+                  className="btn btn-sm btn-light rounded-circle d-flex align-items-center justify-content-center border-0 p-0 shadow-none flex-shrink-0"
+                  style={{ width: '32px', height: '32px', color: '#64748b' }}
                   aria-label="Close"
                   onClick={handleCloseModal}
-                ></button>
+                >
+                  <i className="bi bi-x-lg" style={{ fontSize: '12px' }}></i>
+                </button>
               </div>
 
               {/* Modal Form */}
               <form onSubmit={handleSubmit}>
-                <div className="modal-body p-4 d-flex flex-column gap-3">
+                <div className="modal-body px-4 py-3 d-flex flex-column gap-3">
+                  {/* Profile Photo Upload Card */}
+                  <div
+                    className="p-3 rounded-3 d-flex align-items-center gap-3"
+                    style={{
+                      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <div className="position-relative flex-shrink-0">
+                      {picturePreview ? (
+                        <img
+                          src={picturePreview}
+                          alt="Preview"
+                          className="rounded-circle shadow-sm"
+                          style={{
+                            width: '60px',
+                            height: '60px',
+                            objectFit: 'cover',
+                            border: '3px solid #ffffff',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
+                          }}
+                        />
+                      ) : (
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+                          style={{
+                            width: '60px',
+                            height: '60px',
+                            background: 'linear-gradient(135deg, #3945E0 0%, #6366f1 100%)',
+                            fontSize: '22px',
+                            border: '3px solid #ffffff',
+                          }}
+                        >
+                          {formData.name ? formData.name.charAt(0).toUpperCase() : <i className="bi bi-person"></i>}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className="position-absolute bottom-0 end-0 btn btn-sm btn-primary rounded-circle p-0 d-flex align-items-center justify-content-center border-2 border-white shadow-xs"
+                        style={{ width: '22px', height: '22px', fontSize: '10px', backgroundColor: '#3945E0' }}
+                        onClick={() => fileInputRef.current?.click()}
+                        title="Upload photo"
+                      >
+                        <i className="bi bi-camera-fill"></i>
+                      </button>
+                    </div>
+                    <div className="flex-grow-1 min-w-0">
+                      <div className="fw-semibold text-dark" style={{ fontSize: '13.5px' }}>
+                        Profile Photo <span className="text-muted fw-normal small">(optional)</span>
+                      </div>
+                      <div className="text-muted" style={{ fontSize: '11.5px', marginBottom: '6px' }}>
+                        Supports JPG, PNG or WEBP (Max 5MB)
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          className="d-none"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              setPictureFile(file);
+                              setPicturePreview(URL.createObjectURL(file));
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-white bg-white border py-1 px-2.5 rounded-2 d-inline-flex align-items-center gap-1.5 shadow-xs fw-medium text-dark"
+                          onClick={() => fileInputRef.current?.click()}
+                          style={{ fontSize: '12px' }}
+                        >
+                          <i className="bi bi-camera text-primary"></i> {picturePreview ? 'Change Photo' : 'Upload Photo'}
+                        </button>
+                        {picturePreview && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-link text-danger p-0 text-decoration-none fw-medium"
+                            onClick={() => {
+                              setPictureFile(null);
+                              setPicturePreview('');
+                              if (fileInputRef.current) fileInputRef.current.value = '';
+                            }}
+                            style={{ fontSize: '12px' }}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Full Name Field */}
                   <div>
-                    <label className="form-label fw-semibold small text-muted mb-1">
+                    <label className="form-label fw-semibold small text-dark mb-1">
                       Full Name <span className="text-danger">*</span>
                     </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="e.g. John Doe"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
+                    <div className="input-group">
+                      <span className="input-group-text bg-light border-end-0 text-muted ps-3 pe-2" style={{ borderColor: '#cbd5e1', borderRadius: '10px 0 0 10px' }}>
+                        <i className="bi bi-person text-secondary"></i>
+                      </span>
+                      <input
+                        type="text"
+                        className="form-control border-start-0 ps-1 shadow-none"
+                        style={{ borderColor: '#cbd5e1', borderRadius: '0 10px 10px 0', height: '42px', fontSize: '13.5px' }}
+                        placeholder="e.g. Karan Singh"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                      />
+                    </div>
                   </div>
 
+                  {/* Email Address Field */}
                   <div>
-                    <label className="form-label fw-semibold small text-muted mb-1">
+                    <label className="form-label fw-semibold small text-dark mb-1">
                       Email Address <span className="text-danger">*</span>
                     </label>
-                    <input
-                      type="email"
-                      className="form-control"
-                      placeholder="e.g. user@example.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      required
-                    />
+                    <div className="input-group">
+                      <span className="input-group-text bg-light border-end-0 text-muted ps-3 pe-2" style={{ borderColor: '#cbd5e1', borderRadius: '10px 0 0 10px' }}>
+                        <i className="bi bi-envelope text-secondary"></i>
+                      </span>
+                      <input
+                        type="email"
+                        className="form-control border-start-0 ps-1 shadow-none"
+                        style={{ borderColor: '#cbd5e1', borderRadius: '0 10px 10px 0', height: '42px', fontSize: '13.5px' }}
+                        placeholder="e.g. karan@gmail.com"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        required
+                      />
+                    </div>
                   </div>
 
+                  {/* Mobile Number Field */}
                   <div>
-                    <label className="form-label fw-semibold small text-muted mb-1">
+                    <label className="form-label fw-semibold small text-dark mb-1">
                       Mobile Number <span className="text-danger">*</span>
                     </label>
-                    <input
-                      type="tel"
-                      className="form-control"
-                      placeholder="e.g. 9876543210"
-                      value={formData.mobile}
-                      onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                      required
-                    />
+                    <div className="input-group">
+                      <span
+                        className="input-group-text bg-light border-end-0 text-dark fw-bold ps-3 pe-2.5 d-flex align-items-center gap-1.5"
+                        style={{ borderColor: '#cbd5e1', borderRadius: '10px 0 0 10px' }}
+                      >
+                        <i className="bi bi-telephone text-secondary me-0.5"></i>
+                        <span className="badge bg-white text-dark border py-1 px-1.5 rounded-2 fw-bold" style={{ fontSize: '12px', letterSpacing: '0.2px' }}>
+                          🇮🇳 +91
+                        </span>
+                      </span>
+                      <input
+                        type="tel"
+                        className="form-control border-start-0 ps-2 shadow-none"
+                        style={{ borderColor: '#cbd5e1', borderRadius: '0 10px 10px 0', height: '42px', fontSize: '13.5px' }}
+                        placeholder="98765 43210"
+                        maxLength="15"
+                        value={formData.mobile}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/^\+91\s*/, '').replace(/[^0-9\s-]/g, '');
+                          setFormData({ ...formData, mobile: val });
+                        }}
+                        required
+                      />
+                    </div>
                   </div>
 
+                  {/* Password Field */}
                   <div>
-                    <label className="form-label fw-semibold small text-muted mb-1">
-                      {editingUser ? 'New Password (leave empty to keep unchanged)' : 'Password *'}
-                    </label>
-                    <input
-                      type="password"
-                      className="form-control"
-                      placeholder={editingUser ? 'Enter new password...' : 'Create account password'}
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      required={!editingUser}
-                    />
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <label className="form-label fw-semibold small text-dark mb-0">
+                        {editingUser ? 'New Password' : 'Password'} {!editingUser && <span className="text-danger">*</span>}
+                      </label>
+                      {editingUser && (
+                        <span className="text-muted" style={{ fontSize: '11px' }}>
+                          Leave empty to keep unchanged
+                        </span>
+                      )}
+                    </div>
+                    <div className="input-group">
+                      <span className="input-group-text bg-light border-end-0 text-muted ps-3 pe-2" style={{ borderColor: '#cbd5e1', borderRadius: '10px 0 0 10px' }}>
+                        <i className="bi bi-lock text-secondary"></i>
+                      </span>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        className="form-control border-start-0 border-end-0 ps-1 shadow-none"
+                        style={{ borderColor: '#cbd5e1', height: '42px', fontSize: '13.5px' }}
+                        placeholder={editingUser ? 'Enter new password...' : 'Create account password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        required={!editingUser}
+                      />
+                      <button
+                        type="button"
+                        className="input-group-text bg-light border-start-0 text-muted px-3 shadow-none"
+                        style={{ borderColor: '#cbd5e1', borderRadius: '0 10px 10px 0', cursor: 'pointer' }}
+                        onClick={() => setShowPassword(!showPassword)}
+                        title={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        <i className={`bi ${showPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'} text-secondary`}></i>
+                      </button>
+                    </div>
                   </div>
 
+                  {/* Account Status Field */}
                   <div>
-                    <label className="form-label fw-semibold small text-muted mb-1">
+                    <label className="form-label fw-semibold small text-dark mb-1">
                       Account Status
                     </label>
-                    <select
-                      className="form-select"
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
+                    <div className="d-flex gap-2">
+                      <button
+                        type="button"
+                        className={`btn flex-fill py-2 px-3 rounded-3 d-flex align-items-center justify-content-center gap-2 border ${formData.status === 'active' ? 'btn-success text-white fw-semibold border-success shadow-xs' : 'btn-light text-muted border-light-subtle'}`}
+                        style={{ fontSize: '13.5px', transition: 'all 0.15s ease' }}
+                        onClick={() => setFormData({ ...formData, status: 'active' })}
+                      >
+                        <span className="rounded-circle d-inline-block" style={{ width: '8px', height: '8px', backgroundColor: formData.status === 'active' ? '#ffffff' : '#22c55e' }}></span>
+                        Active
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn flex-fill py-2 px-3 rounded-3 d-flex align-items-center justify-content-center gap-2 border ${formData.status === 'inactive' ? 'btn-danger text-white fw-semibold border-danger shadow-xs' : 'btn-light text-muted border-light-subtle'}`}
+                        style={{ fontSize: '13.5px', transition: 'all 0.15s ease' }}
+                        onClick={() => setFormData({ ...formData, status: 'inactive' })}
+                      >
+                        <span className="rounded-circle d-inline-block" style={{ width: '8px', height: '8px', backgroundColor: formData.status === 'inactive' ? '#ffffff' : '#ef4444' }}></span>
+                        Inactive
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {/* Modal Footer */}
-                <div className="modal-footer bg-light border-top py-2.5 px-4 d-flex justify-content-end gap-2">
+                <div className="modal-footer border-top py-3 px-4 d-flex justify-content-end gap-2 bg-light bg-opacity-50">
                   <button
                     type="button"
-                    className="btn btn-light btn-sm px-3"
+                    className="btn btn-outline-secondary btn-sm px-3.5 py-2 rounded-3 fw-medium"
                     onClick={handleCloseModal}
                     disabled={modalLoading}
+                    style={{ fontSize: '13px' }}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="btn btn-primary btn-sm px-4 fw-semibold"
-                    style={{ backgroundColor: '#3945E0', border: 'none' }}
+                    className="btn btn-primary btn-sm px-4 py-2 rounded-3 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm"
+                    style={{
+                      background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
+                      border: 'none',
+                      fontSize: '13px',
+                    }}
                     disabled={modalLoading}
                   >
                     {modalLoading ? (
@@ -551,9 +782,13 @@ const UsersList = () => {
                         Saving...
                       </>
                     ) : editingUser ? (
-                      'Update User'
+                      <>
+                        <i className="bi bi-check2-circle"></i> Update User
+                      </>
                     ) : (
-                      'Create User'
+                      <>
+                        <i className="bi bi-plus-circle"></i> Create User
+                      </>
                     )}
                   </button>
                 </div>

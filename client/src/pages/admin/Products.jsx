@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
+import { formatImg } from '../../utils/imageUrl';
+import './Products.css';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -20,12 +23,19 @@ const Products = () => {
   const [deleteModal, setDeleteModal] = useState({ show: false, id: null, name: '' });
   const [deletingId, setDeletingId] = useState(null);
 
+  const showAlert = (type, message) => {
+    setAlert({ show: true, type, message });
+    setTimeout(() => {
+      setAlert({ show: false, type: '', message: '' });
+    }, 4000);
+  };
+
   const fetchProductsAndCategories = async () => {
     setLoading(true);
     try {
       const [prodRes, catRes] = await Promise.allSettled([
-        axios.get('http://localhost:5000/api/product/show'),
-        axios.get('http://localhost:5000/api/category/show')
+        axios.get(`${API_BASE_URL}/api/product/show`),
+        axios.get(`${API_BASE_URL}/api/category/show`)
       ]);
 
       if (prodRes.status === 'fulfilled' && Array.isArray(prodRes.value.data)) {
@@ -37,8 +47,7 @@ const Products = () => {
       if (catRes.status === 'fulfilled' && Array.isArray(catRes.value.data)) {
         setCategories(catRes.value.data);
       }
-    } catch (err) {
-      console.error('Failed to fetch products', err);
+    } catch {
       showAlert('danger', 'Failed to load products from server.');
     } finally {
       setLoading(false);
@@ -48,13 +57,6 @@ const Products = () => {
   useEffect(() => {
     fetchProductsAndCategories();
   }, []);
-
-  const showAlert = (type, message) => {
-    setAlert({ show: true, type, message });
-    setTimeout(() => {
-      setAlert({ show: false, type: '', message: '' });
-    }, 4000);
-  };
 
   const openDeleteModal = (prod) => {
     setDeleteModal({
@@ -74,19 +76,18 @@ const Products = () => {
     setProducts(prev => prev.filter(p => p._id !== targetId));
 
     try {
-      const res = await axios.delete(`http://localhost:5000/api/product/delete/${targetId}`);
+      const res = await axios.delete(`${API_BASE_URL}/api/product/delete/${targetId}`);
       showAlert('success', res.data?.message || `Product "${targetName}" deleted successfully!`);
       setDeleteModal({ show: false, id: null, name: '' });
       fetchProductsAndCategories();
-    } catch (err) {
-      console.error('Failed to delete product with DELETE, trying fallback:', err);
+    } catch {
       try {
-        const fallbackRes = await axios.post(`http://localhost:5000/api/product/delete/${targetId}`);
+        const fallbackRes = await axios.post(`${API_BASE_URL}/api/product/delete/${targetId}`);
         showAlert('success', fallbackRes.data?.message || `Product "${targetName}" deleted successfully!`);
         setDeleteModal({ show: false, id: null, name: '' });
         fetchProductsAndCategories();
       } catch (fallbackErr) {
-        const errMsg = fallbackErr.response?.data?.message || err.response?.data?.message || 'Failed to delete product.';
+        const errMsg = fallbackErr.response?.data?.message || 'Failed to delete product.';
         showAlert('danger', errMsg);
         fetchProductsAndCategories(); // rollback
       }
@@ -98,31 +99,16 @@ const Products = () => {
   const handleToggleStatus = async (product) => {
     const nextStatus = product.status === 'active' ? 'inactive' : 'active';
     try {
-      await axios.patch(`http://localhost:5000/api/product/patch/${product._id}`, {
+      await axios.patch(`${API_BASE_URL}/api/product/patch/${product._id}`, {
         status: nextStatus
       });
       setProducts(prev => prev.map(p => p._id === product._id ? { ...p, status: nextStatus } : p));
       showAlert('success', `Product set to ${nextStatus}.`);
-    } catch (err) {
-      console.error('Failed to toggle status', err);
+    } catch {
       showAlert('danger', 'Failed to update product status.');
     }
   };
 
-  // Format Date Helper
-  const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
-    try {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    } catch {
-      return dateStr;
-    }
-  };
 
   // Filter Logic
   const filteredProducts = products.filter(item => {
@@ -150,33 +136,36 @@ const Products = () => {
   return (
     <>
       {/* Page Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3 prod-page-header">
         <div>
-          <h1 className="dashboard-header-title mb-1">
-            Manage <span>Products</span>
+          <div className="prod-header-badge">
+            <i className="bi bi-boxes"></i> Inventory Catalog
+          </div>
+          <h1 className="prod-title mb-1">
+            Manage <span className="prod-title-highlight">Products</span>
           </h1>
-          <p className="text-muted mb-0" style={{ fontSize: '14.5px' }}>
-            View, search, edit, and organize all inventory and store products
+          <p className="prod-subtitle mb-0">
+            Real-time management of store inventory, pricing, categories and live customer visibility
           </p>
         </div>
         <div className="d-flex align-items-center gap-2">
           <button
-            className="btn btn-outline-secondary d-inline-flex align-items-center gap-1.5 px-3 py-2"
-            style={{ borderRadius: '10px' }}
+            className="btn btn-white border d-inline-flex align-items-center gap-2 px-3.5 py-2 shadow-xs fw-semibold"
+            style={{ borderRadius: '10px', backgroundColor: '#ffffff', color: '#334155', fontSize: '13.5px' }}
             onClick={fetchProductsAndCategories}
             title="Refresh product list"
           >
-            <i className="bi bi-arrow-clockwise"></i> Refresh
+            <i className="bi bi-arrow-clockwise text-primary"></i> Refresh
           </button>
           <Link
             to="/dashboard/products/add"
-            className="btn btn-primary d-inline-flex align-items-center gap-2 px-3.5 py-2 shadow-sm"
+            className="btn d-inline-flex align-items-center gap-2 px-4 py-2 text-white shadow-sm fw-semibold"
             style={{
-              backgroundColor: '#3945E0',
+              background: 'linear-gradient(135deg, #3945E0, #2563eb)',
               border: 'none',
               borderRadius: '10px',
-              fontWeight: '600',
-              boxShadow: '0 4px 12px rgba(57, 69, 224, 0.25)'
+              fontSize: '13.5px',
+              boxShadow: '0 4px 14px rgba(57, 69, 224, 0.28)'
             }}
           >
             <i className="bi bi-plus-lg"></i> Add New Product
@@ -186,23 +175,23 @@ const Products = () => {
 
       {/* Alert Notification */}
       {alert.show && (
-        <div className={`alert alert-${alert.type} alert-dismissible fade show mb-4`} role="alert" style={{ borderRadius: '12px' }}>
-          <i className={`bi ${alert.type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'} me-2`}></i>
-          {alert.message}
-          <button type="button" className="btn-close" onClick={() => setAlert({ show: false, type: '', message: '' })}></button>
+        <div className={`alert alert-${alert.type} alert-dismissible fade show mb-4 shadow-sm`} role="alert" style={{ borderRadius: '12px' }}>
+          <i className={`bi ${alert.type === 'success' ? 'bi-check-circle-fill text-success' : 'bi-exclamation-triangle-fill text-danger'} me-2 fs-5 align-middle`}></i>
+          <span>{alert.message}</span>
+          <button type="button" className="btn-close shadow-none" onClick={() => setAlert({ show: false, type: '', message: '' })}></button>
         </div>
       )}
 
       {/* Metrics Row */}
       <div className="row g-3 mb-4">
         <div className="col-6 col-lg-3">
-          <div className="card border-0 shadow-sm p-3" style={{ borderRadius: '14px', background: 'linear-gradient(135deg, #eff6ff, #ffffff)', borderLeft: '4px solid #3945E0' }}>
+          <div className="prod-metric-card prod-metric-total">
             <div className="d-flex align-items-center justify-content-between">
               <div>
-                <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>Total Products</small>
-                <h3 className="fw-bold mb-0 text-dark mt-1">{totalCount}</h3>
+                <span className="prod-metric-label">Total Products</span>
+                <div className="prod-metric-val">{totalCount}</div>
               </div>
-              <div className="rounded-circle p-2.5 bg-primary bg-opacity-10 text-primary fs-4">
+              <div className="prod-metric-icon prod-icon-blue">
                 <i className="bi bi-box-seam-fill"></i>
               </div>
             </div>
@@ -210,13 +199,13 @@ const Products = () => {
         </div>
 
         <div className="col-6 col-lg-3">
-          <div className="card border-0 shadow-sm p-3" style={{ borderRadius: '14px', background: 'linear-gradient(135deg, #ecfdf5, #ffffff)', borderLeft: '4px solid #10b981' }}>
+          <div className="prod-metric-card prod-metric-instock">
             <div className="d-flex align-items-center justify-content-between">
               <div>
-                <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>In Stock</small>
-                <h3 className="fw-bold mb-0 text-success mt-1">{inStockCount}</h3>
+                <span className="prod-metric-label">In Stock</span>
+                <div className="prod-metric-val text-success">{inStockCount}</div>
               </div>
-              <div className="rounded-circle p-2.5 bg-success bg-opacity-10 text-success fs-4">
+              <div className="prod-metric-icon prod-icon-green">
                 <i className="bi bi-check-circle-fill"></i>
               </div>
             </div>
@@ -224,13 +213,13 @@ const Products = () => {
         </div>
 
         <div className="col-6 col-lg-3">
-          <div className="card border-0 shadow-sm p-3" style={{ borderRadius: '14px', background: 'linear-gradient(135deg, #fef2f2, #ffffff)', borderLeft: '4px solid #ef4444' }}>
+          <div className="prod-metric-card prod-metric-outstock">
             <div className="d-flex align-items-center justify-content-between">
               <div>
-                <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>Out / Low Stock</small>
-                <h3 className="fw-bold mb-0 text-danger mt-1">{outOfStockCount}</h3>
+                <span className="prod-metric-label">Out / Low Stock</span>
+                <div className="prod-metric-val text-danger">{outOfStockCount}</div>
               </div>
-              <div className="rounded-circle p-2.5 bg-danger bg-opacity-10 text-danger fs-4">
+              <div className="prod-metric-icon prod-icon-red">
                 <i className="bi bi-exclamation-octagon-fill"></i>
               </div>
             </div>
@@ -238,13 +227,13 @@ const Products = () => {
         </div>
 
         <div className="col-6 col-lg-3">
-          <div className="card border-0 shadow-sm p-3" style={{ borderRadius: '14px', background: 'linear-gradient(135deg, #fffbeb, #ffffff)', borderLeft: '4px solid #f59e0b' }}>
+          <div className="prod-metric-card prod-metric-featured">
             <div className="d-flex align-items-center justify-content-between">
               <div>
-                <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>Featured Items</small>
-                <h3 className="fw-bold mb-0 text-warning mt-1">{featuredCount}</h3>
+                <span className="prod-metric-label">Featured Items</span>
+                <div className="prod-metric-val" style={{ color: '#d97706' }}>{featuredCount}</div>
               </div>
-              <div className="rounded-circle p-2.5 bg-warning bg-opacity-10 text-warning fs-4">
+              <div className="prod-metric-icon prod-icon-amber">
                 <i className="bi bi-star-fill"></i>
               </div>
             </div>
@@ -252,32 +241,28 @@ const Products = () => {
         </div>
       </div>
 
-      {/* Main Table Container */}
-      <div className="dashboard-section p-4" style={{ borderRadius: '18px' }}>
-        
-        {/* Filters Header Bar */}
-        <div className="row g-3 align-items-center mb-3">
+      {/* Filter Bar */}
+      <div className="prod-filter-card">
+        <div className="row g-2.5 align-items-center">
           {/* Search Bar */}
-          <div className="col-12 col-md-4">
-            <div className="input-group">
-              <span className="input-group-text bg-light border-end-0 text-muted">
-                <i className="bi bi-search"></i>
-              </span>
+          <div className="col-12 col-md-5">
+            <div className="prod-search-wrap">
+              <i className="bi bi-search prod-search-icon"></i>
               <input
                 type="text"
-                className="form-control border-start-0 ps-0 bg-light"
-                placeholder="Search by title, summary, or tags..."
+                className="prod-search-input"
+                placeholder="Search products by title, tags, or description..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ fontSize: '14px' }}
               />
               {searchTerm && (
                 <button
-                  className="btn btn-light border-start-0 text-muted"
+                  className="prod-search-clear"
                   type="button"
                   onClick={() => setSearchTerm('')}
+                  title="Clear search"
                 >
-                  <i className="bi bi-x"></i>
+                  <i className="bi bi-x-lg"></i>
                 </button>
               )}
             </div>
@@ -286,12 +271,11 @@ const Products = () => {
           {/* Category Filter */}
           <div className="col-6 col-md-3">
             <select
-              className="form-select form-select-sm"
+              className="prod-select w-100"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              style={{ borderRadius: '8px', fontSize: '13px' }}
             >
-              <option value="all">All Categories</option>
+              <option value="all">📁 All Categories</option>
               {categories.map(c => (
                 <option key={c._id} value={c._id}>{c.category || c.name}</option>
               ))}
@@ -299,14 +283,13 @@ const Products = () => {
           </div>
 
           {/* Stock Status Filter */}
-          <div className="col-6 col-md-3">
+          <div className="col-6 col-md-2">
             <select
-              className="form-select form-select-sm"
+              className="prod-select w-100"
               value={selectedStockStatus}
               onChange={(e) => setSelectedStockStatus(e.target.value)}
-              style={{ borderRadius: '8px', fontSize: '13px' }}
             >
-              <option value="all">All Stock Statuses</option>
+              <option value="all">📦 Stock Status</option>
               <option value="In Stock">In Stock</option>
               <option value="Low Stock">Low Stock</option>
               <option value="Out of Stock">Out of Stock</option>
@@ -317,31 +300,32 @@ const Products = () => {
           {/* Store Visibility Filter */}
           <div className="col-12 col-md-2">
             <select
-              className="form-select form-select-sm"
+              className="prod-select w-100"
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              style={{ borderRadius: '8px', fontSize: '13px' }}
             >
-              <option value="all">All Status</option>
-              <option value="active">Active only</option>
-              <option value="inactive">Inactive only</option>
+              <option value="all">🌐 All Status</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
             </select>
           </div>
         </div>
+      </div>
 
-        {/* Table */}
+      {/* Products Table Container */}
+      <div className="prod-table-container">
         <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0">
-            <thead className="table-light">
+          <table className="prod-table align-middle">
+            <thead>
               <tr>
-                <th style={{ width: '4%' }} className="text-center">S.No</th>
-                <th style={{ width: '8%' }}>Thumbnail</th>
-                <th style={{ width: '26%' }}>Product Details</th>
-                <th style={{ width: '13%' }}>Category</th>
-                <th style={{ width: '15%' }}>Price (₹)</th>
-                <th style={{ width: '12%' }}>Stock Status</th>
-                <th style={{ width: '10%' }}>Status</th>
-                <th style={{ width: '12%' }} className="text-end">Actions</th>
+                <th style={{ width: '5%' }} className="text-center">#</th>
+                <th style={{ width: '8%' }}>Item</th>
+                <th style={{ width: '28%' }}>Product Details</th>
+                <th style={{ width: '14%' }}>Category</th>
+                <th style={{ width: '14%' }}>Price (₹)</th>
+                <th style={{ width: '12%' }}>Stock</th>
+                <th style={{ width: '9%' }}>Status</th>
+                <th style={{ width: '10%' }} className="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -349,69 +333,61 @@ const Products = () => {
                 <tr>
                   <td colSpan="8" className="text-center py-5 text-muted">
                     <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                    Loading products...
+                    <span className="fw-semibold">Loading product catalog...</span>
                   </td>
                 </tr>
               ) : filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan="8" className="text-center py-5 text-muted">
-                    <i className="bi bi-box-seam fs-1 d-block mb-2 text-secondary"></i>
-                    {searchTerm || selectedCategory !== 'all' || selectedStockStatus !== 'all' || selectedStatus !== 'all'
-                      ? 'No products match your active search or filters.'
-                      : 'No products registered in database yet.'}
-                    <div className="mt-3">
-                      <Link
-                        to="/dashboard/products/add"
-                        className="btn btn-sm btn-primary px-3 py-1.5"
-                        style={{ backgroundColor: '#3945E0', border: 'none', borderRadius: '8px' }}
-                      >
-                        <i className="bi bi-plus-lg me-1"></i> Add First Product
-                      </Link>
+                    <div className="rounded-circle p-3 bg-light d-inline-flex mb-3">
+                      <i className="bi bi-box-seam fs-2 text-secondary opacity-50"></i>
                     </div>
+                    <h6 className="fw-bold text-dark mb-1">No products found</h6>
+                    <p className="text-muted small mb-3">
+                      {searchTerm || selectedCategory !== 'all' || selectedStockStatus !== 'all' || selectedStatus !== 'all'
+                        ? 'Try adjusting your search query or reset filter options.'
+                        : 'Your inventory catalog is currently empty.'}
+                    </p>
+                    <Link
+                      to="/dashboard/products/add"
+                      className="btn btn-sm btn-primary px-3 py-1.5 fw-semibold"
+                      style={{ backgroundColor: '#3945E0', border: 'none', borderRadius: '8px' }}
+                    >
+                      <i className="bi bi-plus-lg me-1"></i> Add First Product
+                    </Link>
                   </td>
                 </tr>
               ) : (
                 filteredProducts.map((prod, index) => {
-                  const thumbUrl = prod.thumbnail ? `http://localhost:5000/${prod.thumbnail.replace(/\\/g, '/')}` : null;
-                  const catName = prod.category_id?.category || prod.category_id?.name || 'Uncategorized';
+                  const thumbUrl = formatImg(prod.thumbnail, null);
+                  const catName = prod.category_id?.category || prod.category_id?.name || 'General';
                   const isActive = prod.status === 'active';
-                  const isStock = (prod.stockstatus || '').toLowerCase() === 'in stock';
-                  const isLow = (prod.stockstatus || '').toLowerCase() === 'low stock';
+                  const stockLower = (prod.stockstatus || '').toLowerCase();
+                  const isStock = stockLower === 'in stock';
+                  const isLow = stockLower === 'low stock';
 
                   return (
                     <tr key={prod._id || index}>
-                      <td className="text-center text-muted fw-semibold" style={{ fontSize: '13px' }}>
-                        {index + 1}
+                      {/* S.No */}
+                      <td className="text-center">
+                        <span className="prod-sno-badge">{index + 1}</span>
                       </td>
 
                       {/* Thumbnail */}
                       <td>
-                        <div
-                          className="d-flex align-items-center justify-content-center bg-white border rounded-3 p-1 shadow-xs"
-                          style={{
-                            width: '52px',
-                            height: '52px',
-                            borderColor: '#e2e8f0',
-                            overflow: 'hidden',
-                          }}
-                        >
+                        <div className="prod-thumb-box">
                           {thumbUrl ? (
                             <img
                               src={thumbUrl}
                               alt={prod.name}
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'contain',
-                                display: 'block',
-                              }}
+                              className="prod-thumb-img"
                               onError={(e) => {
                                 e.target.onerror = null;
                                 e.target.src = 'https://placehold.co/100x100?text=No+Img';
                               }}
                             />
                           ) : (
-                            <i className="bi bi-box-seam text-secondary opacity-50 fs-4"></i>
+                            <i className="bi bi-cpu text-secondary opacity-50 fs-5"></i>
                           )}
                         </div>
                       </td>
@@ -420,41 +396,32 @@ const Products = () => {
                       <td>
                         <div>
                           <div className="d-flex align-items-center gap-1.5 mb-1 flex-wrap">
-                            <strong className="text-dark" style={{ fontSize: '14.5px', fontWeight: '600' }}>
+                            <span className="prod-name">
                               {prod.name}
-                            </strong>
+                            </span>
                             {prod.is_feature && (
-                              <span className="badge bg-warning bg-opacity-25 text-dark border border-warning-subtle py-0.5 px-1.5" style={{ fontSize: '10px' }}>
-                                <i className="bi bi-star-fill text-warning me-1"></i>Featured
+                              <span className="prod-badge-featured">
+                                <i className="bi bi-star-fill text-warning"></i> Featured
                               </span>
                             )}
                           </div>
-                          <p
-                            className="text-muted mb-1.5"
-                            style={{
-                              fontSize: '12px',
-                              maxWidth: '280px',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {prod.shortdescription || 'No description provided'}
+                          <p className="prod-desc-text">
+                            {prod.shortdescription || 'No summary provided for this item'}
                           </p>
-                          <div className="d-flex flex-wrap gap-1">
+                          <div className="d-flex flex-wrap gap-1.5">
                             {prod.isfreedelivery && (
-                              <span className="badge bg-success-subtle text-success border border-success-subtle py-0.5 px-1.5" style={{ fontSize: '10px' }}>
-                                <i className="bi bi-truck me-1"></i>Free Delivery
+                              <span className="prod-tag-pill prod-tag-delivery">
+                                <i className="bi bi-truck"></i> Free Delivery
                               </span>
                             )}
                             {prod.iscouponavailable && (
-                              <span className="badge bg-primary-subtle text-primary border border-primary-subtle py-0.5 px-1.5" style={{ fontSize: '10px' }}>
-                                <i className="bi bi-tag-fill me-1"></i>Coupon
+                              <span className="prod-tag-pill prod-tag-coupon">
+                                <i className="bi bi-tag-fill"></i> Coupon
                               </span>
                             )}
                             {Array.isArray(prod.tags) &&
                               prod.tags.slice(0, 2).map((tag, tIdx) => (
-                                <span key={tIdx} className="badge bg-light text-secondary border py-0.5 px-1.5" style={{ fontSize: '10px' }}>
+                                <span key={tIdx} className="prod-tag-pill prod-tag-hash">
                                   #{tag}
                                 </span>
                               ))}
@@ -464,35 +431,32 @@ const Products = () => {
 
                       {/* Category */}
                       <td>
-                        <span
-                          className="badge rounded-pill bg-light text-dark border px-2.5 py-1.5 d-inline-flex align-items-center gap-1"
-                          style={{ fontSize: '12px', fontWeight: '500' }}
-                        >
-                          <i className="bi bi-folder2-open text-primary"></i>
-                          {catName}
-                        </span>
+                        <div className="prod-cat-badge">
+                          <i className="bi bi-folder2-open"></i>
+                          <span>{catName}</span>
+                        </div>
                         {prod.height && prod.width ? (
-                          <div className="text-muted mt-1" style={{ fontSize: '11px' }}>
-                            <i className="bi bi-bounding-box-circles me-1 opacity-75"></i>
-                            {prod.height} × {prod.width} mm
+                          <div className="prod-dim-text">
+                            <i className="bi bi-rulers"></i>
+                            <span>{prod.height} × {prod.width} mm</span>
                           </div>
                         ) : null}
                       </td>
 
                       {/* Price Details */}
                       <td>
-                        <div className="d-flex align-items-baseline gap-1.5">
-                          <strong className="text-dark" style={{ fontSize: '15px' }}>
+                        <div className="d-flex align-items-baseline">
+                          <span className="prod-price-current">
                             ₹ {prod.price?.toLocaleString('en-IN') || 0}
-                          </strong>
+                          </span>
                           {prod.compareprice && prod.compareprice > prod.price && (
-                            <small className="text-muted text-decoration-line-through" style={{ fontSize: '11.5px' }}>
+                            <span className="prod-price-compare">
                               ₹ {prod.compareprice?.toLocaleString('en-IN')}
-                            </small>
+                            </span>
                           )}
                         </div>
                         {prod.costprice ? (
-                          <div className="text-muted" style={{ fontSize: '11.5px' }}>
+                          <div className="prod-price-cost">
                             Cost: ₹ {prod.costprice?.toLocaleString('en-IN')}
                           </div>
                         ) : null}
@@ -500,20 +464,11 @@ const Products = () => {
 
                       {/* Stock Status */}
                       <td>
-                        <span
-                          className={`badge px-2.5 py-1.5 rounded-pill d-inline-flex align-items-center gap-1 ${
-                            isStock
-                              ? 'bg-success-subtle text-success border border-success-subtle'
-                              : isLow
-                              ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
-                              : 'bg-danger-subtle text-danger border border-danger-subtle'
-                          }`}
-                          style={{ fontSize: '12px' }}
-                        >
-                          <i className={`bi ${isStock ? 'bi-check-circle-fill' : isLow ? 'bi-exclamation-circle-fill' : 'bi-x-circle-fill'}`}></i>
-                          {prod.stockstatus || 'Out of Stock'}
-                        </span>
-                        <div className="text-muted mt-1" style={{ fontSize: '11.5px' }}>
+                        <div className={`prod-stock-pill ${isStock ? 'prod-stock-in' : isLow ? 'prod-stock-low' : 'prod-stock-out'}`}>
+                          <span className="prod-stock-dot"></span>
+                          <span>{prod.stockstatus || 'Out of Stock'}</span>
+                        </div>
+                        <div className="prod-stock-qty">
                           Qty: <strong className="text-dark">{prod.stockquantity ?? 0}</strong>
                         </div>
                       </td>
@@ -521,15 +476,13 @@ const Products = () => {
                       {/* Status Toggle */}
                       <td>
                         <button
+                          type="button"
                           onClick={() => handleToggleStatus(prod)}
-                          className={`btn btn-sm px-2.5 py-1 rounded-pill ${
-                            isActive ? 'btn-outline-success bg-success-subtle' : 'btn-outline-secondary'
-                          }`}
-                          style={{ fontSize: '11.5px', fontWeight: '500' }}
+                          className={`prod-status-toggle ${isActive ? 'prod-status-active' : 'prod-status-inactive'}`}
                           title={`Click to mark as ${isActive ? 'Inactive' : 'Active'}`}
                         >
-                          <i className={`bi ${isActive ? 'bi-check2-circle' : 'bi-dash-circle'} me-1`}></i>
-                          {isActive ? 'Active' : 'Inactive'}
+                          <i className={`bi ${isActive ? 'bi-check-circle-fill' : 'bi-dash-circle'}`}></i>
+                          <span>{isActive ? 'Active' : 'Inactive'}</span>
                         </button>
                       </td>
 
@@ -538,9 +491,9 @@ const Products = () => {
                         <div className="d-inline-flex gap-1.5">
                           {/* Quick View Button */}
                           <button
-                            className="btn btn-sm btn-light border text-info shadow-xs rounded-2"
+                            type="button"
+                            className="prod-action-btn prod-action-view"
                             title="Quick View Details"
-                            style={{ width: '32px', height: '32px', padding: 0 }}
                             onClick={() => {
                               setViewProduct(prod);
                               setActiveModalImgIdx(0);
@@ -551,17 +504,16 @@ const Products = () => {
                           {/* Edit Button */}
                           <Link
                             to={`/dashboard/products/edit/${prod._id}`}
-                            className="btn btn-sm btn-light border text-primary shadow-xs rounded-2 d-inline-flex align-items-center justify-content-center"
+                            className="prod-action-btn prod-action-edit"
                             title="Edit Product"
-                            style={{ width: '32px', height: '32px', padding: 0 }}
                           >
                             <i className="bi bi-pencil"></i>
                           </Link>
                           {/* Delete Button */}
                           <button
-                            className="btn btn-sm btn-light border text-danger shadow-xs rounded-2"
+                            type="button"
+                            className="prod-action-btn prod-action-delete"
                             title="Delete Product"
-                            style={{ width: '32px', height: '32px', padding: 0 }}
                             onClick={() => openDeleteModal(prod)}
                           >
                             <i className="bi bi-trash3"></i>
@@ -575,6 +527,26 @@ const Products = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Table Footer Summary */}
+        {!loading && filteredProducts.length > 0 && (
+          <div className="prod-table-footer">
+            <div>
+              Showing <strong className="text-dark">{filteredProducts.length}</strong> of{' '}
+              <strong className="text-dark">{totalCount}</strong> products
+            </div>
+            <div className="d-flex align-items-center gap-3">
+              <span>
+                <i className="bi bi-circle-fill text-success me-1" style={{ fontSize: '8px' }}></i>
+                {inStockCount} In Stock
+              </span>
+              <span>
+                <i className="bi bi-circle-fill text-warning me-1" style={{ fontSize: '8px' }}></i>
+                {featuredCount} Featured
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* QUICK VIEW MODAL */}
@@ -621,9 +593,7 @@ const Products = () => {
                       }
                       const safeIdx = Math.min(activeModalImgIdx, Math.max(0, allImgs.length - 1));
                       const currentImg = allImgs[safeIdx] || '';
-                      const currentSrc = currentImg
-                        ? `http://localhost:5000/${currentImg.replace(/\\/g, '/')}`
-                        : 'https://placehold.co/400x400?text=No+Image';
+                      const currentSrc = formatImg(currentImg, 'https://placehold.co/400x400?text=No+Image');
 
                       const handlePrev = () => {
                         setActiveModalImgIdx((prev) => (prev - 1 + allImgs.length) % allImgs.length);
@@ -700,7 +670,7 @@ const Products = () => {
                               <div className="d-flex gap-2 flex-wrap">
                                 {allImgs.map((img, idx) => {
                                   const isSelected = idx === safeIdx;
-                                  const src = `http://localhost:5000/${img.replace(/\\/g, '/')}`;
+                                  const src = formatImg(img);
                                   return (
                                     <button
                                       key={idx}

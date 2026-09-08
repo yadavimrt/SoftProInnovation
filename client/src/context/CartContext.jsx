@@ -1,88 +1,113 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const CartContext = createContext();
 
-const getUserStorageKey = (prefix = 'softpro_cart') => {
-  const token = localStorage.getItem('token');
-  if (!token) return null;
-  const user = localStorage.getItem('user');
-  if (user) {
-    try {
-      const parsed = JSON.parse(user);
-      const uid = parsed._id || parsed.id || parsed.email;
-      if (uid) return `${prefix}_${uid}`;
-    } catch (e) {}
+// Safely check currently authenticated user session
+const getAuthenticatedUser = () => {
+  try {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    if (!token || !userStr) return null;
+    return JSON.parse(userStr);
+  } catch {
+    return null;
   }
-  return `${prefix}_user`;
+};
+
+// Safely load initial data across user-specific keys
+const loadInitialData = (prefix) => {
+  try {
+    const user = getAuthenticatedUser();
+
+    // Both Cart and Wishlist strictly require an authenticated user session
+    if (!user) {
+      try {
+        localStorage.removeItem(prefix);
+      } catch {
+        // ignore
+      }
+      return [];
+    }
+
+    const uid = user._id || user.id;
+    if (uid) {
+      const userScoped = localStorage.getItem(`${prefix}_${uid}`);
+      if (userScoped) {
+        const parsed = JSON.parse(userScoped);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    }
+
+    const direct = localStorage.getItem(prefix);
+    if (direct) {
+      const parsed = JSON.parse(direct);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error(`Error loading initial ${prefix}:`, e);
+  }
+  return [];
 };
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState([]);
-  const [wishlistItems, setWishlistItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => loadInitialData('softpro_cart'));
+  const [wishlistItems, setWishlistItems] = useState(() => loadInitialData('softpro_wishlist'));
   const [toast, setToast] = useState({ message: '', type: 'info' });
 
-  // Sync state with current user session
-  const syncUserCartAndWishlist = useCallback(() => {
-    const cartKey = getUserStorageKey('softpro_cart');
-    if (cartKey) {
-      try {
-        const savedCart = localStorage.getItem(cartKey);
-        setCartItems(savedCart ? JSON.parse(savedCart) : []);
-      } catch (e) {
-        setCartItems([]);
-      }
-    } else {
+  // Sync state on user session change or cross-tab storage change
+  const syncStorage = useCallback(() => {
+    const user = getAuthenticatedUser();
+    if (!user) {
       setCartItems([]);
-    }
-
-    const wishlistKey = getUserStorageKey('softpro_wishlist');
-    if (wishlistKey) {
+      setWishlistItems([]);
       try {
-        const savedWishlist = localStorage.getItem(wishlistKey);
-        setWishlistItems(savedWishlist ? JSON.parse(savedWishlist) : []);
-      } catch (e) {
-        setWishlistItems([]);
+        localStorage.removeItem('softpro_cart');
+        localStorage.removeItem('softpro_wishlist');
+      } catch {
+        // ignore
       }
     } else {
-      setWishlistItems([]);
+      setCartItems(loadInitialData('softpro_cart'));
+      setWishlistItems(loadInitialData('softpro_wishlist'));
     }
   }, []);
 
-  // Sync state on mount & whenever user session changes
   useEffect(() => {
-    syncUserCartAndWishlist();
-
-    const handleSessionChange = () => {
-      syncUserCartAndWishlist();
-    };
-
-    window.addEventListener('userSessionChange', handleSessionChange);
-    window.addEventListener('storage', handleSessionChange);
+    window.addEventListener('userSessionChange', syncStorage);
+    window.addEventListener('storage', syncStorage);
 
     return () => {
-      window.removeEventListener('userSessionChange', handleSessionChange);
-      window.removeEventListener('storage', handleSessionChange);
+      window.removeEventListener('userSessionChange', syncStorage);
+      window.removeEventListener('storage', syncStorage);
     };
-  }, [syncUserCartAndWishlist]);
+  }, [syncStorage]);
 
-  // Persist Cart (Only if user is logged in)
+  // Persist Cart (Only for authenticated user)
   useEffect(() => {
     try {
-      const storageKey = getUserStorageKey('softpro_cart');
-      if (storageKey) {
-        localStorage.setItem(storageKey, JSON.stringify(cartItems));
+      const user = getAuthenticatedUser();
+      if (user) {
+        localStorage.setItem('softpro_cart', JSON.stringify(cartItems));
+        const uid = user._id || user.id;
+        if (uid) localStorage.setItem(`softpro_cart_${uid}`, JSON.stringify(cartItems));
+      } else {
+        localStorage.removeItem('softpro_cart');
       }
     } catch (e) {
       console.error('Error saving cart to localStorage', e);
     }
   }, [cartItems]);
 
-  // Persist Wishlist (Only if user is logged in)
+  // Persist Wishlist (Only for authenticated user)
   useEffect(() => {
     try {
-      const storageKey = getUserStorageKey('softpro_wishlist');
-      if (storageKey) {
-        localStorage.setItem(storageKey, JSON.stringify(wishlistItems));
+      const user = getAuthenticatedUser();
+      if (user) {
+        localStorage.setItem('softpro_wishlist', JSON.stringify(wishlistItems));
+        const uid = user._id || user.id;
+        if (uid) localStorage.setItem(`softpro_wishlist_${uid}`, JSON.stringify(wishlistItems));
+      } else {
+        localStorage.removeItem('softpro_wishlist');
       }
     } catch (e) {
       console.error('Error saving wishlist to localStorage', e);
@@ -96,20 +121,30 @@ export const CartProvider = ({ children }) => {
     }, 3000);
   };
 
-  // Add Item to Cart (Requires Login)
-  const addToCart = (product, quantity = 1) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      showToast('Please login or register to add products to your cart!', 'warning');
+  // Add Item to Cart (Requires Authentication)
+  const addToCart = (product, quantity = 1, navigate) => {
+    const user = getAuthenticatedUser();
+    if (!user) {
+      showToast('Please log in first to add items to your cart!', 'warning');
+      if (navigate) {
+        setTimeout(() => navigate('/login'), 1000);
+      } else {
+        setTimeout(() => {
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+        }, 1200);
+      }
       return false;
     }
 
     if (!product) return false;
-    const pId = product._id || product.id;
+    const pId = String(product._id || product.id || '');
+    if (!pId) return false;
     const qtyToAdd = Number(quantity) || 1;
 
     setCartItems((prevItems) => {
-      const existingIndex = prevItems.findIndex((item) => (item._id || item.id) === pId);
+      const existingIndex = prevItems.findIndex((item) => String(item._id || item.id) === pId);
 
       if (existingIndex > -1) {
         const updated = [...prevItems];
@@ -125,10 +160,10 @@ export const CartProvider = ({ children }) => {
           id: pId,
           name: product.name || product.title || 'Product',
           price: Number(product.price) || 0,
-          compareprice: Number(product.compareprice) || 0,
+          compareprice: Number(product.compareprice) || Number(product.originalPrice) || 0,
           thumbnail: product.thumbnail || product.image || (product.images && product.images[0]) || '',
-          images: product.images || [],
-          category: product.category_id?.category || product.category || 'Electronics',
+          images: product.images || (product.thumbnail ? [product.thumbnail] : []),
+          category: product.category_id?.category || product.category_id?.name || product.category || 'Electronics',
           quantity: qtyToAdd,
           stockstatus: product.stockstatus || 'In Stock',
         };
@@ -139,39 +174,56 @@ export const CartProvider = ({ children }) => {
     return true;
   };
 
-  // Buy Now Action
+  // Buy Now Action (Requires Authentication)
   const buyNow = (product, quantity = 1, navigate) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      showToast('Please login or register to buy products!', 'warning');
-      if (navigate) navigate('/login');
+    const user = getAuthenticatedUser();
+    if (!user) {
+      showToast('Please log in first to purchase this product!', 'warning');
+      if (navigate) {
+        setTimeout(() => navigate('/login'), 1000);
+      } else {
+        setTimeout(() => {
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+        }, 1200);
+      }
       return false;
     }
-
-    const added = addToCart(product, quantity);
+    const added = addToCart(product, quantity, navigate);
     if (added && navigate) {
       navigate('/cart');
     }
     return added;
   };
 
-  // Wishlist Actions
-  const toggleWishlist = (product) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      showToast('Please login or register to manage your wishlist!', 'warning');
+  // Wishlist Actions (Requires Authentication)
+  const toggleWishlist = (product, navigate) => {
+    const user = getAuthenticatedUser();
+    if (!user) {
+      showToast('Please log in first to manage your wishlist!', 'warning');
+      if (navigate) {
+        setTimeout(() => navigate('/login'), 1000);
+      } else {
+        setTimeout(() => {
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+        }, 1200);
+      }
       return false;
     }
 
     if (!product) return false;
-    const pId = product._id || product.id;
+    const pId = String(product._id || product.id || '');
+    if (!pId) return false;
 
     let isAdded = false;
     setWishlistItems((prev) => {
-      const exists = prev.some((item) => (item._id || item.id) === pId);
+      const exists = prev.some((item) => String(item._id || item.id) === pId);
       if (exists) {
-        showToast(`Removed ${product.name || product.title} from Wishlist`, 'info');
-        return prev.filter((item) => (item._id || item.id) !== pId);
+        showToast(`Removed ${product.name || product.title || 'item'} from Wishlist`, 'info');
+        return prev.filter((item) => String(item._id || item.id) !== pId);
       } else {
         isAdded = true;
         const newItem = {
@@ -179,10 +231,10 @@ export const CartProvider = ({ children }) => {
           id: pId,
           name: product.name || product.title || 'Product',
           price: Number(product.price) || 0,
-          compareprice: Number(product.compareprice) || 0,
+          compareprice: Number(product.compareprice) || Number(product.originalPrice) || 0,
           thumbnail: product.thumbnail || product.image || (product.images && product.images[0]) || '',
-          images: product.images || [],
-          category: product.category_id?.category || product.category || 'Electronics',
+          images: product.images || (product.thumbnail ? [product.thumbnail] : []),
+          category: product.category_id?.category || product.category_id?.name || product.category || 'Electronics',
           stockstatus: product.stockstatus || 'In Stock',
           rating: product.rating || 4.8,
         };
@@ -194,34 +246,43 @@ export const CartProvider = ({ children }) => {
   };
 
   const isInWishlist = (productId) => {
-    if (!productId) return false;
-    return wishlistItems.some((item) => (item._id || item.id) === productId);
+    const user = getAuthenticatedUser();
+    if (!user || !productId) return false;
+    const targetId = String(productId);
+    return wishlistItems.some((item) => String(item._id || item.id) === targetId);
   };
 
   const removeFromWishlist = (productId) => {
-    setWishlistItems((prev) => prev.filter((item) => (item._id || item.id) !== productId));
+    const user = getAuthenticatedUser();
+    if (!user) return;
+    const targetId = String(productId);
+    setWishlistItems((prev) => prev.filter((item) => String(item._id || item.id) !== targetId));
     showToast('Removed item from Wishlist', 'info');
   };
 
   const getWishlistCount = () => {
+    const user = getAuthenticatedUser();
+    if (!user) return 0;
     return wishlistItems.length;
   };
 
   // Remove Item from Cart
   const removeFromCart = (productId) => {
-    setCartItems((prev) => prev.filter((item) => (item._id || item.id) !== productId));
+    const targetId = String(productId);
+    setCartItems((prev) => prev.filter((item) => String(item._id || item.id) !== targetId));
     showToast('Item removed from cart', 'info');
   };
 
   // Update Item Quantity
   const updateQuantity = (productId, newQuantity) => {
+    const targetId = String(productId);
     const qty = Number(newQuantity);
     if (qty <= 0) {
-      removeFromCart(productId);
+      removeFromCart(targetId);
       return;
     }
     setCartItems((prev) =>
-      prev.map((item) => ((item._id || item.id) === productId ? { ...item, quantity: qty } : item))
+      prev.map((item) => (String(item._id || item.id) === targetId ? { ...item, quantity: qty } : item))
     );
   };
 
@@ -231,13 +292,17 @@ export const CartProvider = ({ children }) => {
     showToast('Cart cleared', 'info');
   };
 
-  // Total Item Count (sum of quantities)
+  // Total Item Count (sum of quantities - returns 0 if not logged in)
   const getCartCount = () => {
+    const user = getAuthenticatedUser();
+    if (!user) return 0;
     return cartItems.reduce((total, item) => total + (Number(item.quantity) || 1), 0);
   };
 
   // Total Price Calculation
   const getCartTotal = () => {
+    const user = getAuthenticatedUser();
+    if (!user) return 0;
     return cartItems.reduce((total, item) => total + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
   };
 
@@ -294,6 +359,7 @@ export const CartProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {

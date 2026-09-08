@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
 
 const Complaints = () => {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchComplaints = async () => {
       try {
         setLoading(true);
-        const res = await axios.get('http://localhost:5000/api/complaint/show').catch(() => ({ data: [] }));
+        const res = await axios.get(`${API_BASE_URL}/api/complaint/show`).catch(() => ({ data: [] }));
         if (Array.isArray(res.data)) {
           setComplaints(res.data);
         } else {
           setComplaints([]);
         }
-      } catch (err) {
+      } catch {
         setComplaints([]);
       } finally {
         setLoading(false);
@@ -26,12 +26,7 @@ const Complaints = () => {
     fetchComplaints();
   }, []);
 
-  const filtered = complaints.filter(c => {
-    const term = searchTerm.toLowerCase().trim();
-    const sub = (c.subject || '').toLowerCase();
-    const name = (c.name || c.user?.name || '').toLowerCase();
-    return !term || sub.includes(term) || name.includes(term);
-  });
+  const filtered = complaints;
 
   return (
     <>

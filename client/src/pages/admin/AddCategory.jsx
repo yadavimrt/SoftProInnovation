@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
+import { formatImg } from '../../utils/imageUrl';
 
 const AddCategory = ({ isEditMode: propIsEditMode }) => {
   const { id } = useParams();
@@ -22,12 +24,20 @@ const AddCategory = ({ isEditMode: propIsEditMode }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const showAlert = (type, message) => {
+    setAlert({ show: true, type, message });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      setAlert({ show: false, type: '', message: '' });
+    }, 5000);
+  };
+
   useEffect(() => {
     if (id) {
       const fetchCategory = async () => {
         setFetchingExisting(true);
         try {
-          const res = await axios.get('http://localhost:5000/api/category/show');
+          const res = await axios.get(`${API_BASE_URL}/api/category/show`);
           if (Array.isArray(res.data)) {
             const found = res.data.find(c => c._id === id);
             if (found) {
@@ -37,12 +47,11 @@ const AddCategory = ({ isEditMode: propIsEditMode }) => {
                 status: found.status || 'active'
               });
               if (found.image) {
-                setPreviewUrl(`http://localhost:5000/${found.image.replace(/\\/g, '/')}`);
+                setPreviewUrl(formatImg(found.image));
               }
             }
           }
-        } catch (err) {
-          console.error('Failed to load category details', err);
+        } catch {
           showAlert('danger', 'Failed to load category details.');
         } finally {
           setFetchingExisting(false);
@@ -51,14 +60,6 @@ const AddCategory = ({ isEditMode: propIsEditMode }) => {
       fetchCategory();
     }
   }, [id]);
-
-  const showAlert = (type, message) => {
-    setAlert({ show: true, type, message });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => {
-      setAlert({ show: false, type: '', message: '' });
-    }, 5000);
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -121,7 +122,7 @@ const AddCategory = ({ isEditMode: propIsEditMode }) => {
       }
 
       if (isEditMode && id) {
-        const res = await axios.put(`http://localhost:5000/api/category/update/${id}`, data, {
+        const res = await axios.put(`${API_BASE_URL}/api/category/update/${id}`, data, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         showAlert('success', res.data.message || 'Category updated successfully!');
@@ -130,7 +131,7 @@ const AddCategory = ({ isEditMode: propIsEditMode }) => {
           navigate('/dashboard/categories');
         }, 1200);
       } else {
-        const res = await axios.post('http://localhost:5000/api/category/register', data, {
+        const res = await axios.post(`${API_BASE_URL}/api/category/register`, data, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         showAlert('success', res.data.message || 'Category registered successfully!');
@@ -155,23 +156,22 @@ const AddCategory = ({ isEditMode: propIsEditMode }) => {
     if (!id) return;
     setDeleting(true);
     try {
-      const res = await axios.delete(`http://localhost:5000/api/category/delete/${id}`);
+      const res = await axios.delete(`${API_BASE_URL}/api/category/delete/${id}`);
       showAlert('success', res.data?.message || 'Category deleted successfully!');
       setShowDeleteModal(false);
       setTimeout(() => {
         navigate('/dashboard/categories');
       }, 1000);
-    } catch (err) {
-      console.error('Delete error, trying POST fallback:', err);
+    } catch {
       try {
-        const fallbackRes = await axios.post(`http://localhost:5000/api/category/delete/${id}`);
+        const fallbackRes = await axios.post(`${API_BASE_URL}/api/category/delete/${id}`);
         showAlert('success', fallbackRes.data?.message || 'Category deleted successfully!');
         setShowDeleteModal(false);
         setTimeout(() => {
           navigate('/dashboard/categories');
         }, 1000);
       } catch (fallbackErr) {
-        const errMsg = fallbackErr.response?.data?.message || err.response?.data?.message || 'Failed to delete category.';
+        const errMsg = fallbackErr.response?.data?.message || 'Failed to delete category.';
         showAlert('danger', errMsg);
       }
     } finally {

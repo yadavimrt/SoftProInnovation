@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
 
 const AdminAddresses = () => {
   const [addresses, setAddresses] = useState([]);
@@ -41,14 +42,13 @@ const AdminAddresses = () => {
   const fetchAddresses = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/address/show');
+      const res = await axios.get(`${API_BASE_URL}/api/address/show`);
       if (Array.isArray(res.data)) {
         setAddresses(res.data);
       } else {
         setAddresses([]);
       }
-    } catch (err) {
-      console.error('Failed to fetch addresses:', err);
+    } catch {
       showAlert('danger', 'Failed to fetch address records from server.');
     } finally {
       setLoading(false);
@@ -57,12 +57,12 @@ const AdminAddresses = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/user/show');
+      const res = await axios.get(`${API_BASE_URL}/api/user/show`);
       if (Array.isArray(res.data)) {
         setUsersList(res.data);
       }
-    } catch (err) {
-      console.error('Failed to fetch users list:', err);
+    } catch {
+      // Ignore user list fetch errors
     }
   };
 
@@ -129,7 +129,7 @@ const AdminAddresses = () => {
     setModalLoading(true);
     try {
       if (editingAddress) {
-        const res = await axios.put(`http://localhost:5000/api/address/update/${editingAddress._id}`, formData);
+        const res = await axios.put(`${API_BASE_URL}/api/address/update/${editingAddress._id}`, formData);
         if (res.data.success) {
           showAlert('success', 'Address updated successfully!');
           setIsModalOpen(false);
@@ -138,7 +138,7 @@ const AdminAddresses = () => {
           showAlert('danger', res.data.message || 'Failed to update address');
         }
       } else {
-        const res = await axios.post('http://localhost:5000/api/address/add', formData);
+        const res = await axios.post(`${API_BASE_URL}/api/address/add`, formData);
         if (res.data.success) {
           showAlert('success', 'New address added successfully!');
           setIsModalOpen(false);
@@ -148,7 +148,6 @@ const AdminAddresses = () => {
         }
       }
     } catch (err) {
-      console.error('Submit error:', err);
       showAlert('danger', err.response?.data?.message || 'Server error saving address.');
     } finally {
       setModalLoading(false);
@@ -174,19 +173,18 @@ const AdminAddresses = () => {
     setAddresses(prev => prev.filter(a => a._id !== targetId));
 
     try {
-      const res = await axios.delete(`http://localhost:5000/api/address/delete/${targetId}`);
+      const res = await axios.delete(`${API_BASE_URL}/api/address/delete/${targetId}`);
       showAlert('success', res.data?.message || `Address for "${targetName}" deleted successfully!`);
       setDeleteModal({ show: false, id: null, name: '', address: '' });
       fetchAddresses();
-    } catch (err) {
-      console.error('Delete error, trying POST fallback:', err);
+    } catch {
       try {
-        const fallbackRes = await axios.post(`http://localhost:5000/api/address/delete/${targetId}`);
+        const fallbackRes = await axios.post(`${API_BASE_URL}/api/address/delete/${targetId}`);
         showAlert('success', fallbackRes.data?.message || `Address for "${targetName}" deleted successfully!`);
         setDeleteModal({ show: false, id: null, name: '', address: '' });
         fetchAddresses();
       } catch (fallbackErr) {
-        const errMsg = fallbackErr.response?.data?.message || err.response?.data?.message || 'Failed to delete address.';
+        const errMsg = fallbackErr.response?.data?.message || 'Failed to delete address.';
         showAlert('danger', errMsg);
         fetchAddresses(); // Rollback optimistic update
       }
@@ -197,13 +195,12 @@ const AdminAddresses = () => {
 
   const handleToggleDefault = async (addr) => {
     try {
-      const res = await axios.put(`http://localhost:5000/api/address/set-default/${addr._id}`);
+      const res = await axios.put(`${API_BASE_URL}/api/address/set-default/${addr._id}`);
       if (res.data.success) {
         showAlert('success', 'Default address set!');
         fetchAddresses();
       }
-    } catch (err) {
-      console.error('Error toggling default:', err);
+    } catch {
       showAlert('danger', 'Failed to update default address.');
     }
   };

@@ -1,8 +1,10 @@
-import { useRef, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Swiper as SwiperReact, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
+import { API_BASE_URL } from '../config/api';
+import { formatImg } from '../utils/imageUrl';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -21,46 +23,54 @@ import img10 from '../assets/10.png';
 
 const fallbackImages = [img1, img2, img3, img4, img5, img6, img7, img8, img9, img10];
 
+const fallbackCategories = [
+  { _id: 'c1', category: 'Microcontrollers', image: img1 },
+  { _id: 'c2', category: 'Sensors & Modules', image: img2 },
+  { _id: 'c3', category: 'Displays & LCDs', image: img3 },
+  { _id: 'c4', category: 'Motors & Drivers', image: img4 },
+  { _id: 'c5', category: 'Power Supplies', image: img5 },
+  { _id: 'c6', category: 'Wireless & IoT', image: img6 },
+  { _id: 'c7', category: 'Robotics Kits', image: img7 },
+  { _id: 'c8', category: 'Cables & Headers', image: img8 },
+  { _id: 'c9', category: 'Development Boards', image: img9 },
+  { _id: 'c10', category: 'Accessories', image: img10 },
+];
+
 const Swiper = () => {
   const navigate = useNavigate();
-  const prevRef = useRef(null);
-  const nextRef = useRef(null);
-
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(fallbackCategories);
   const [loading, setLoading] = useState(true);
 
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
-      // Fetch all active categories directly from the admin database
-      const res = await axios.get('http://localhost:5000/api/category/show');
-      if (Array.isArray(res.data)) {
-        // Only show active categories on homepage
-        const activeCategories = res.data.filter(
-          (cat) => !cat.status || cat.status.toLowerCase() === 'active'
-        );
-        setCategories(activeCategories);
-      } else {
-        setCategories([]);
-      }
-    } catch (err) {
-      console.error('Error loading categories from admin dashboard:', err);
-      setCategories([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let isMounted = true;
+    const fetchCategories = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/category/show`);
+        if (!isMounted) return;
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          const activeCategories = res.data.filter(
+            (cat) => !cat.status || cat.status.toLowerCase() === 'active'
+          );
+          setCategories(activeCategories.length > 0 ? activeCategories : fallbackCategories);
+        } else {
+          setCategories(fallbackCategories);
+        }
+      } catch {
+        if (isMounted) setCategories(fallbackCategories);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
     fetchCategories();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const getCategoryImageUrl = (cat, index) => {
-    if (cat.image && typeof cat.image === 'string' && cat.image.trim() !== '') {
-      if (cat.image.startsWith('http://') || cat.image.startsWith('https://')) {
-        return cat.image;
-      }
-      return `http://localhost:5000/${cat.image.replace(/\\/g, '/')}`;
+    if (cat?.image && typeof cat.image === 'string' && cat.image.trim() !== '') {
+      return formatImg(cat.image, fallbackImages[index % fallbackImages.length]);
     }
     return fallbackImages[index % fallbackImages.length];
   };
@@ -74,37 +84,31 @@ const Swiper = () => {
   const hasMultiple = categories.length > 5;
 
   return (
-    <section className="category-section py-4">
+    <section className="category-swiper-section py-5 bg-white border-bottom border-top">
       <div className="container">
-        {/* Header Strip */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4">
+        {/* Header with Title and Custom Navigation Arrows */}
+        <div className="d-flex align-items-center justify-content-between mb-4">
           <div>
-            <div className="d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill bg-primary bg-opacity-10 text-primary fw-semibold small mb-2 border border-primary border-opacity-10">
-              <i className="bi bi-grid-fill fs-7"></i>
-              <span className="text-uppercase tracking-wider" style={{ fontSize: '11px', letterSpacing: '0.8px' }}>Browse By Type</span>
-            </div>
-            <h2 className="category-heading mt-1 mb-2 fw-bold text-dark fs-2">
-              Popular <span style={{ color: '#ff4500' }} className="fst-italic fw-extrabold">Categories</span>
+            <span className="section-eyebrow d-block mb-1">DISCOVER</span>
+            <h2 className="section-heading mb-0">
+              Popular <span className="highlight-italic">Categories</span>
             </h2>
-            <p className="category-text text-secondary mb-0" style={{ fontSize: '14.5px', maxWidth: '520px' }}>
-              Find exactly what your project needs from our curated electronics families.
-            </p>
+            <div className="section-accent-line mt-2"></div>
           </div>
 
-          {/* Navigation Controls */}
-          {categories.length > 1 && (
-            <div className="d-flex gap-2 mt-3 mt-md-0 align-items-center">
+          {hasMultiple && (
+            <div className="d-flex align-items-center gap-2">
               <button
-                ref={prevRef}
-                className="cat-nav-btn rounded-circle d-flex align-items-center justify-content-center"
+                type="button"
+                className="cat-nav-btn swiper-cat-prev rounded-circle d-flex align-items-center justify-content-center"
                 style={{ width: '42px', height: '42px', padding: 0 }}
                 aria-label="Previous Slide"
               >
                 <i className="bi bi-chevron-left fs-6"></i>
               </button>
               <button
-                ref={nextRef}
-                className="cat-nav-btn rounded-circle d-flex align-items-center justify-content-center"
+                type="button"
+                className="cat-nav-btn swiper-cat-next rounded-circle d-flex align-items-center justify-content-center"
                 style={{ width: '42px', height: '42px', padding: 0 }}
                 aria-label="Next Slide"
               >
@@ -125,11 +129,10 @@ const Swiper = () => {
             <i className="bi bi-folder2-open fs-1 text-muted d-block mb-2"></i>
             <h6 className="text-muted mb-1">No Categories Added Yet</h6>
             <p className="small text-secondary mb-0">
-              Admin dashboard mein category add karte hi yahan automatically list show hone lagegi.
+              Categories added in the admin dashboard will automatically appear here.
             </p>
           </div>
         ) : (
-          /* Dynamic Categories Swiper */
           <SwiperReact
             key={`swiper-cat-count-${categories.length}`}
             modules={[Navigation, Autoplay]}
@@ -147,18 +150,8 @@ const Swiper = () => {
                 : false
             }
             navigation={{
-              prevEl: prevRef.current,
-              nextEl: nextRef.current,
-            }}
-            onBeforeInit={(swiper) => {
-              swiper.params.navigation.prevEl = prevRef.current;
-              swiper.params.navigation.nextEl = nextRef.current;
-            }}
-            onInit={(swiper) => {
-              swiper.params.navigation.prevEl = prevRef.current;
-              swiper.params.navigation.nextEl = nextRef.current;
-              swiper.navigation.init();
-              swiper.navigation.update();
+              prevEl: '.swiper-cat-prev',
+              nextEl: '.swiper-cat-next',
             }}
             breakpoints={{
               480: {

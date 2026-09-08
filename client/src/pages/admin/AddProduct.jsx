@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
+import { formatImg } from '../../utils/imageUrl';
 
 const AddProduct = ({ isEditMode: propIsEditMode }) => {
   const { id } = useParams();
@@ -44,20 +46,28 @@ const AddProduct = ({ isEditMode: propIsEditMode }) => {
   const [galleryPreviews, setGalleryPreviews] = useState([]);
   const [existingGallery, setExistingGallery] = useState([]);
 
+  const showAlert = (type, message) => {
+    setAlert({ show: true, type, message });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      setAlert({ show: false, type: '', message: '' });
+    }, 5000);
+  };
+
   // Fetch Categories for dropdown
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/category/show');
+        const res = await axios.get(`${API_BASE_URL}/api/category/show`);
         if (Array.isArray(res.data)) {
           setCategories(res.data);
           // Set default category if empty and not editing
-          if (!isEditMode && res.data.length > 0 && !formData.category_id) {
-            setFormData(prev => ({ ...prev, category_id: res.data[0]._id }));
+          if (!isEditMode && res.data.length > 0) {
+            setFormData(prev => prev.category_id ? prev : { ...prev, category_id: res.data[0]._id });
           }
         }
-      } catch (err) {
-        console.error('Failed to load categories', err);
+      } catch {
+        // Handled silently
       }
     };
     fetchCategories();
@@ -69,7 +79,7 @@ const AddProduct = ({ isEditMode: propIsEditMode }) => {
       const fetchProduct = async () => {
         setFetchingData(true);
         try {
-          const res = await axios.get(`http://localhost:5000/api/product/show/${id}`);
+          const res = await axios.get(`${API_BASE_URL}/api/product/show/${id}`);
           const prod = res.data.product || res.data;
           if (prod) {
             setFormData({
@@ -96,15 +106,14 @@ const AddProduct = ({ isEditMode: propIsEditMode }) => {
             });
 
             if (prod.thumbnail) {
-              setThumbnailPreview(`http://localhost:5000/${prod.thumbnail.replace(/\\/g, '/')}`);
+              setThumbnailPreview(formatImg(prod.thumbnail));
             }
 
             if (Array.isArray(prod.images) && prod.images.length > 0) {
-              setExistingGallery(prod.images.map(img => `http://localhost:5000/${img.replace(/\\/g, '/')}`));
+              setExistingGallery(prod.images.map(img => formatImg(img)));
             }
           }
-        } catch (err) {
-          console.error('Failed to fetch product details', err);
+        } catch {
           showAlert('danger', 'Failed to load product details from server.');
         } finally {
           setFetchingData(false);
@@ -113,14 +122,6 @@ const AddProduct = ({ isEditMode: propIsEditMode }) => {
       fetchProduct();
     }
   }, [id]);
-
-  const showAlert = (type, message) => {
-    setAlert({ show: true, type, message });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => {
-      setAlert({ show: false, type: '', message: '' });
-    }, 5000);
-  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -271,11 +272,11 @@ const AddProduct = ({ isEditMode: propIsEditMode }) => {
 
       let res;
       if (isEditMode) {
-        res = await axios.put(`http://localhost:5000/api/product/update/${id}`, data, {
+        res = await axios.put(`${API_BASE_URL}/api/product/update/${id}`, data, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
       } else {
-        res = await axios.post('http://localhost:5000/api/product/register', data, {
+        res = await axios.post(`${API_BASE_URL}/api/product/register`, data, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
       }

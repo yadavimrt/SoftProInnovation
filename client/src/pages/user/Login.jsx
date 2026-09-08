@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import logo from '../../assets/logo.png';
+import { API_BASE_URL } from '../../config/api';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/user/login', {
+      const response = await axios.post(`${API_BASE_URL}/api/user/login`, {
         email: email.trim(),
         password: password
       });
@@ -32,6 +33,14 @@ const Login = () => {
         localStorage.setItem('role', response.data.role || 'user');
         localStorage.setItem('name', response.data.name || response.data.user?.name);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        if (response.data.adminId) {
+          localStorage.setItem('adminId', response.data.adminId);
+        }
+        if (response.data.user?.picture) {
+          localStorage.setItem('picture', response.data.user.picture);
+        } else {
+          localStorage.removeItem('picture');
+        }
 
         // Notify app of user session change
         window.dispatchEvent(new Event('userSessionChange'));

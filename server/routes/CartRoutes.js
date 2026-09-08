@@ -1,7 +1,7 @@
 const express = require('express');
 const Router = express.Router();
-const Cart = require('../model/cart');
-const Product = require('../model/product');
+const Cart = require('../model/Cart');
+const Product = require('../model/Product');
 const User = require('../model/User');
 
 

@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import { API_BASE_URL } from '../../config/api';
+import { formatImg } from '../../utils/imageUrl';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -17,6 +19,7 @@ const Profile = () => {
   const [picture, setPicture] = useState('');
   const [pictureFile, setPictureFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Address in Personal Details
   const [defaultAddressId, setDefaultAddressId] = useState(null);
@@ -29,6 +32,8 @@ const Profile = () => {
   // Saved Addresses Management State
   const [addresses, setAddresses] = useState([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState(null);
   const [addressSubmitLoading, setAddressSubmitLoading] = useState(false);
@@ -49,8 +54,15 @@ const Profile = () => {
   });
 
   // Page active tab & status
-  const [activeTab, setActiveTab] = useState('profile');
-  const [loading, setLoading] = useState(true);
+  const tabParam = searchParams.get('tab');
+  const validTab = tabParam && ['profile', 'orders', 'addresses', 'reviews', 'wishlist'].includes(tabParam) ? tabParam : null;
+  const [activeTab, setActiveTab] = useState(validTab || 'profile');
+  const [prevTabParam, setPrevTabParam] = useState(validTab);
+  if (validTab !== prevTabParam) {
+    setPrevTabParam(validTab);
+    setActiveTab(validTab || 'profile');
+  }
+
   const [saving, setSaving] = useState(false);
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
 
@@ -59,46 +71,9 @@ const Profile = () => {
     setTimeout(() => setAlert({ show: false, type: '', message: '' }), 4500);
   };
 
-  useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam && ['profile', 'orders', 'addresses', 'reviews', 'wishlist'].includes(tabParam)) {
-      setActiveTab(tabParam);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (!storedToken || !storedUser) {
-      navigate('/login');
-      return;
-    }
-
-    try {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setFullName(parsedUser.name || '');
-      setEmail(parsedUser.email || '');
-      setMobile(parsedUser.mobile || '');
-      setPicture(parsedUser.picture || '');
-
-      const userId = parsedUser._id || parsedUser.id;
-      if (userId) {
-        fetchUserProfile(userId);
-        fetchUserAddresses(userId);
-      } else {
-        setLoading(false);
-      }
-    } catch (e) {
-      console.error('Failed to parse user from local storage:', e);
-      navigate('/login');
-    }
-  }, [navigate]);
-
   const fetchUserProfile = async (userId) => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/user/profile/${userId}`);
+      const res = await axios.get(`${API_BASE_URL}/api/user/profile/${userId}`);
       if (res.data && res.data.user) {
         const u = res.data.user;
         setUser(u);
@@ -107,17 +82,15 @@ const Profile = () => {
         setMobile(u.mobile || '');
         setPicture(u.picture || '');
       }
-    } catch (err) {
-      console.warn('Profile fetch warning:', err.message);
-    } finally {
-      setLoading(false);
+    } catch {
+      // Ignore network errors on background refresh
     }
   };
 
   const fetchUserAddresses = async (userId) => {
     setAddressesLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/address/user/${userId}`);
+      const res = await axios.get(`${API_BASE_URL}/api/address/user/${userId}`);
       let list = [];
       if (res.data && res.data.addresses) {
         list = res.data.addresses;
@@ -136,26 +109,162 @@ const Profile = () => {
         setStateName(def.state || '');
         setPincode(def.pincode || '');
       }
-    } catch (err) {
-      console.warn('Address fetch warning:', err.message);
+    } catch {
+      // Handled gracefully in UI
     } finally {
       setAddressesLoading(false);
     }
   };
 
-  const handleImageChange = (e) => {
+  const fetchUserOrders = async (userId) => {
+    setOrdersLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/order/user/${userId}`);
+      setOrders(res.data?.orders || []);
+    } catch {
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    const storedRole = localStorage.getItem('role');
+    const storedName = localStorage.getItem('name');
+    const storedAdminId = localStorage.getItem('adminId');
+    const storedUser = localStorage.getItem('user');
+
+    if (!storedToken && !storedName && !storedAdminId) {
+      navigate('/login');
+      return;
+    }
+
+    const initProfile = async () => {
+      try {
+        // Guarantee fetching the exact profile for the active session (Admin or User)
+        const res = await axios.get(`${API_BASE_URL}/api/user/current-user`, {
+          headers: storedToken ? { Authorization: `Bearer ${storedToken}` } : {},
+          params: {
+            adminId: storedAdminId || undefined,
+            name: storedName || undefined,
+            role: storedRole || undefined
+          }
+        });
+
+        if (res.data && res.data.user) {
+          const u = res.data.user;
+          setUser(u);
+          setFullName(u.name || '');
+          setEmail(u.email || '');
+          setMobile(u.mobile || '');
+          setPicture(u.picture || '');
+
+          // Update localStorage to stay cleanly synced across the whole app
+          localStorage.setItem('user', JSON.stringify(u));
+          localStorage.setItem('name', u.name);
+          if (u.picture) {
+            localStorage.setItem('picture', u.picture);
+          } else {
+            localStorage.removeItem('picture');
+          }
+          window.dispatchEvent(new Event('userSessionChange'));
+
+          fetchUserAddresses(u._id);
+          return;
+        }
+      } catch {
+        // Fallback to local storage below
+      }
+
+      // Fallback to local storage if API call fails
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          setFullName(parsedUser.name || '');
+          setEmail(parsedUser.email || '');
+          setMobile(parsedUser.mobile || '');
+          setPicture(parsedUser.picture || '');
+
+          const userId = parsedUser._id || parsedUser.id;
+          if (userId) {
+            fetchUserProfile(userId);
+            fetchUserAddresses(userId);
+          }
+        } catch {
+          // Ignore invalid JSON in storage
+        }
+      }
+    };
+
+    initProfile();
+  }, [navigate]);
+
+  useEffect(() => {
+    const userId = user?._id || user?.id;
+    if (activeTab === 'orders' && userId) fetchUserOrders(userId);
+  }, [activeTab, user?._id, user?.id]);
+
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        showAlert('danger', 'Please choose a valid image file (JPG, PNG, WEBP).');
-        return;
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showAlert('danger', 'Please choose a valid image file (JPG, PNG, WEBP).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showAlert('danger', 'Image size should be less than 5MB.');
+      return;
+    }
+
+    setPictureFile(file);
+    const tempUrl = URL.createObjectURL(file);
+    setPreviewUrl(tempUrl);
+
+    // Auto-upload immediately to server so profile picture is saved permanently to MongoDB
+    const userId = user?._id || user?.id || localStorage.getItem('adminId');
+    if (!userId) {
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('picture', file);
+      if (fullName) formData.append('name', fullName.trim());
+      if (email) formData.append('email', email.trim());
+      if (mobile) formData.append('mobile', mobile.trim());
+
+      const res = await axios.put(`${API_BASE_URL}/api/user/profile/${userId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (res.data && res.data.user) {
+        const updatedUserData = res.data.user;
+        setUser(updatedUserData);
+        setPicture(updatedUserData.picture || '');
+        setPictureFile(null);
+        setPreviewUrl('');
+
+        localStorage.setItem('user', JSON.stringify(updatedUserData));
+        if (updatedUserData.name) localStorage.setItem('name', updatedUserData.name);
+        if (updatedUserData.picture) {
+          localStorage.setItem('picture', updatedUserData.picture);
+        } else {
+          localStorage.removeItem('picture');
+        }
+        window.dispatchEvent(new Event('userSessionChange'));
+
+        showAlert('success', 'Profile picture uploaded and saved successfully!');
       }
-      if (file.size > 5 * 1024 * 1024) {
-        showAlert('danger', 'Image size should be less than 5MB.');
-        return;
-      }
-      setPictureFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+    } catch (err) {
+      showAlert('danger', err.response?.data?.message || 'Failed to auto-upload image. Please click Save Profile below.');
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -185,12 +294,12 @@ const Profile = () => {
         formData.append('mobile', mobile.trim());
         formData.append('picture', pictureFile);
 
-        const res = await axios.put(`http://localhost:5000/api/user/profile/${userId}`, formData, {
+        const res = await axios.put(`${API_BASE_URL}/api/user/profile/${userId}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         updatedUserData = res.data.user;
       } else {
-        const res = await axios.put(`http://localhost:5000/api/user/profile/${userId}`, {
+        const res = await axios.put(`${API_BASE_URL}/api/user/profile/${userId}`, {
           name: fullName.trim(),
           email: email.trim(),
           mobile: mobile.trim()
@@ -209,6 +318,11 @@ const Profile = () => {
 
         localStorage.setItem('user', JSON.stringify(updatedUserData));
         localStorage.setItem('name', updatedUserData.name);
+        if (updatedUserData.picture) {
+          localStorage.setItem('picture', updatedUserData.picture);
+        } else {
+          localStorage.removeItem('picture');
+        }
         window.dispatchEvent(new Event('userSessionChange'));
       }
 
@@ -228,9 +342,9 @@ const Profile = () => {
         };
 
         if (defaultAddressId) {
-          await axios.put(`http://localhost:5000/api/address/update/${defaultAddressId}`, addressPayload);
+          await axios.put(`${API_BASE_URL}/api/address/update/${defaultAddressId}`, addressPayload);
         } else {
-          const addRes = await axios.post('http://localhost:5000/api/address/add', addressPayload);
+          const addRes = await axios.post(`${API_BASE_URL}/api/address/add`, addressPayload);
           if (addRes.data && addRes.data.address) {
             setDefaultAddressId(addRes.data.address._id);
           }
@@ -240,7 +354,6 @@ const Profile = () => {
 
       showAlert('success', 'Profile and Address details saved successfully!');
     } catch (err) {
-      console.error('Update profile error:', err);
       const errMsg = err.response?.data?.message || 'Failed to update details.';
       showAlert('danger', errMsg);
     } finally {
@@ -312,7 +425,7 @@ const Profile = () => {
 
     try {
       if (editingAddressId) {
-        const res = await axios.put(`http://localhost:5000/api/address/update/${editingAddressId}`, {
+        const res = await axios.put(`${API_BASE_URL}/api/address/update/${editingAddressId}`, {
           ...addressFormData,
           user_id: userId
         });
@@ -324,7 +437,7 @@ const Profile = () => {
           showAlert('danger', res.data.message || 'Failed to update address');
         }
       } else {
-        const res = await axios.post('http://localhost:5000/api/address/add', {
+        const res = await axios.post(`${API_BASE_URL}/api/address/add`, {
           ...addressFormData,
           user_id: userId
         });
@@ -337,7 +450,6 @@ const Profile = () => {
         }
       }
     } catch (err) {
-      console.error('Save address error:', err);
       showAlert('danger', err.response?.data?.message || 'Error saving address.');
     } finally {
       setAddressSubmitLoading(false);
@@ -347,15 +459,14 @@ const Profile = () => {
   const handleSetDefaultAddress = async (addrId) => {
     const userId = user?._id || user?.id;
     try {
-      const res = await axios.patch(`http://localhost:5000/api/address/default/${addrId}`, {
+      const res = await axios.patch(`${API_BASE_URL}/api/address/default/${addrId}`, {
         user_id: userId
       });
       if (res.data.success) {
         showAlert('success', 'Default shipping address updated!');
         fetchUserAddresses(userId);
       }
-    } catch (err) {
-      console.error('Error setting default address:', err);
+    } catch {
       showAlert('danger', 'Failed to set default address.');
     }
   };
@@ -376,19 +487,19 @@ const Profile = () => {
     setDeletingId(targetId);
 
     try {
-      const res = await axios.delete(`http://localhost:5000/api/address/delete/${targetId}`);
+      const res = await axios.delete(`${API_BASE_URL}/api/address/delete/${targetId}`);
       if (res.data?.success) {
         showAlert('success', 'Address removed successfully!');
         setDeleteModal({ show: false, id: null, name: '', address: '' });
         if (userId) fetchUserAddresses(userId);
       }
-    } catch (err) {
+    } catch {
       try {
-        const fallbackRes = await axios.post(`http://localhost:5000/api/address/delete/${targetId}`);
+        const fallbackRes = await axios.post(`${API_BASE_URL}/api/address/delete/${targetId}`);
         showAlert('success', fallbackRes.data?.message || 'Address deleted successfully!');
         setDeleteModal({ show: false, id: null, name: '', address: '' });
         if (userId) fetchUserAddresses(userId);
-      } catch (fallbackErr) {
+      } catch {
         showAlert('danger', 'Failed to delete address.');
       }
     } finally {
@@ -396,7 +507,7 @@ const Profile = () => {
     }
   };
 
-  const displayImageSrc = previewUrl || (picture ? `http://localhost:5000${picture}` : '');
+  const displayImageSrc = previewUrl || formatImg(picture, '');
 
   const changeTab = (tabKey) => {
     setActiveTab(tabKey);
@@ -423,7 +534,7 @@ const Profile = () => {
             <div className="profile-sidebar-wrapper">
               {/* Avatar Circle */}
               <div className="profile-avatar-outer">
-                <div className="profile-avatar-circle">
+                <div className="profile-avatar-circle position-relative overflow-hidden">
                   {displayImageSrc ? (
                     <img src={displayImageSrc} alt={fullName || 'User'} className="profile-avatar-img" />
                   ) : (
@@ -433,15 +544,31 @@ const Profile = () => {
                       </span>
                     </div>
                   )}
+                  {uploadingAvatar && (
+                    <div
+                      className="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white"
+                      style={{ backgroundColor: 'rgba(0, 0, 0, 0.55)', backdropFilter: 'blur(2px)' }}
+                    >
+                      <div className="spinner-border spinner-border-sm text-light mb-1" role="status">
+                        <span className="visually-hidden">Uploading...</span>
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: 600 }}>Saving...</span>
+                    </div>
+                  )}
                 </div>
                 {/* Upload Button */}
                 <button
                   type="button"
                   className="profile-avatar-upload-btn"
                   title="Upload profile picture"
+                  disabled={uploadingAvatar}
                   onClick={() => fileInputRef.current && fileInputRef.current.click()}
                 >
-                  <i className="bi bi-camera-fill"></i>
+                  {uploadingAvatar ? (
+                    <span className="spinner-border spinner-border-sm" style={{ width: '12px', height: '12px' }}></span>
+                  ) : (
+                    <i className="bi bi-camera-fill"></i>
+                  )}
                 </button>
                 <input
                   type="file"
@@ -795,7 +922,31 @@ const Profile = () => {
             {activeTab === 'orders' && (
               <div className="profile-content-card">
                 <h2 className="profile-card-title">My Orders</h2>
-                <div className="text-center py-5">
+                {ordersLoading ? (
+                  <div className="text-center py-5"><span className="spinner-border text-primary"></span></div>
+                ) : orders.length > 0 ? (
+                  <div className="d-flex flex-column gap-3">
+                    {orders.map((order) => (
+                      <div key={order._id} className="border rounded-3 p-3 bg-white shadow-sm">
+                        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom pb-3 mb-3">
+                          <div><strong>Order {order.orderId}</strong><div className="small text-muted">{new Date(order.createdAt).toLocaleDateString('en-IN')}</div></div>
+                          <span className="badge bg-warning-subtle text-warning-emphasis text-capitalize">{order.status || 'pending'}</span>
+                          <strong className="text-dark">₹{Number(order.totalAmount || 0).toLocaleString('en-IN')}</strong>
+                        </div>
+                        <div className="d-flex flex-column gap-2">
+                          {(order.items || []).map((item, itemIndex) => (
+                            <div key={`${order._id}-${itemIndex}`} className="d-flex align-items-center gap-3">
+                              <div className="border rounded-2 d-flex align-items-center justify-content-center bg-light" style={{ width: 52, height: 52 }}><img src={formatImg(item.thumbnail)} alt={item.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /></div>
+                              <div className="flex-grow-1"><strong className="d-block">{item.name}</strong><small className="text-muted">Qty: {item.quantity}</small></div>
+                              <strong>₹{Number(item.total || 0).toLocaleString('en-IN')}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-5">
                   <div className="mb-3">
                     <i className="bi bi-bag-x text-muted" style={{ fontSize: '3.5rem' }}></i>
                   </div>
@@ -806,7 +957,8 @@ const Profile = () => {
                   <Link to="/Product" className="btn btn-primary px-4 py-2 rounded-pill fw-semibold shadow-sm">
                     Browse Products
                   </Link>
-                </div>
+                  </div>
+                )}
               </div>
             )}
 

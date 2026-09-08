@@ -1,4 +1,5 @@
 const Category = require('../model/Category');
+const Product = require('../model/Product');
 const express = require('express');
 const upload = require('../middleware/upload');
 const path = require('path');
@@ -144,24 +145,22 @@ const deleteCategoryHandler = async (req, res) => {
                 if (fs.existsSync(fullImagePath)) {
                     fs.unlinkSync(fullImagePath);
                 }
-            } catch (imgErr) {
-                console.warn('Could not delete category image file:', imgErr.message);
+            } catch {
+                // Ignore file system cleanup errors
             }
         }
 
         // Unlink or update any products assigned to this category
         try {
-            const Product = require('../model/Product');
             await Product.updateMany({ category_id: id }, { $unset: { category_id: 1 } });
-        } catch (prodErr) {
-            console.warn('Could not update products for deleted category:', prodErr.message);
+        } catch {
+            // Non-critical product unlink failure
         }
 
         await Category.findByIdAndDelete(id);
 
         return res.json({ success: true, message: 'Category deleted successfully' });
     } catch (error) {
-        console.error('Error deleting category:', error);
         return res.status(500).json({ success: false, message: 'Error deleting category', error: error.message });
     }
 };
@@ -170,4 +169,4 @@ Router.delete('/delete/:id', deleteCategoryHandler);
 Router.delete('/:id', deleteCategoryHandler);
 Router.post('/delete/:id', deleteCategoryHandler);
 
-module.exports = Router;
+module.exports = Router;

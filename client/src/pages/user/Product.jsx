@@ -1,51 +1,31 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { useCart } from '../../context/CartContext'
-
-import img1 from '../../assets/1.avif'
-import img2 from '../../assets/2.png'
-import img3 from '../../assets/3.png'
-import img4 from '../../assets/4.png'
-import img5 from '../../assets/5.png'
-import img6 from '../../assets/6.png'
-import img7 from '../../assets/7.png'
-import img8 from '../../assets/8.png'
-import img12 from '../../assets/12.png'
-import img13 from '../../assets/13.png'
-import img14 from '../../assets/14.png'
-import img15 from '../../assets/15.png'
-import img16 from '../../assets/16.png'
-import img17 from '../../assets/17.png'
-import img18 from '../../assets/18.png'
-import img19 from '../../assets/19.png'
+import QuickViewModal from '../../components/QuickViewModal'
+import { API_BASE_URL } from '../../config/api'
+import { formatImg } from '../../utils/imageUrl'
 
 const Product = () => {
   const navigate = useNavigate()
-  const { toggleWishlist, isInWishlist, showToast } = useCart()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const { addToCart, buyNow, toggleWishlist, isInWishlist } = useCart()
+  const [searchParams] = useSearchParams()
   const categoryFromUrl = searchParams.get('category')
   const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl || 'All')
-  const [categories, setCategory] = useState([])
-  const [categoryList, setCategoryList] = useState(categories)
+  const [prevCategoryFromUrl, setPrevCategoryFromUrl] = useState(categoryFromUrl)
+  if (categoryFromUrl !== prevCategoryFromUrl) {
+    setPrevCategoryFromUrl(categoryFromUrl)
+    setSelectedCategory(categoryFromUrl || 'All')
+  }
+
+  const [categoryList, setCategoryList] = useState(['All'])
   const [allProductsList, setallProductsList] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('Featured')
-  const [hoveredCard, setHoveredCard] = useState(null)
   const [quickViewProduct, setQuickViewProduct] = useState(null)
-  const [quickViewIdx, setQuickViewIdx] = useState(0)
-  const [modalQty, setModalQty] = useState(1)
   const [cardImgMap, setCardImgMap] = useState({})
-
-  const formatImg = (imgPath) => {
-    if (!imgPath) return 'https://placehold.co/400x400?text=No+Image'
-    if (imgPath.startsWith('http://') || imgPath.startsWith('https://') || imgPath.startsWith('data:')) {
-      return imgPath
-    }
-    return `http://localhost:5000/${imgPath.replace(/\\/g, '/')}`
-  }
 
   const getProductImageList = (item) => {
     if (!item) return []
@@ -63,13 +43,14 @@ const Product = () => {
   }
 
   const openQuickView = (product) => {
-    setQuickViewProduct(product)
-    setQuickViewIdx(0)
+    const prodId = product._id || product.id
+    if (prodId) {
+      navigate(`/product/${prodId}`)
+    }
   }
 
   const closeQuickView = () => {
     setQuickViewProduct(null)
-    setQuickViewIdx(0)
   }
 
   useEffect(() => {
@@ -88,35 +69,34 @@ const Product = () => {
     }
   }, [quickViewProduct])
 
-  useEffect(() => {
-    if (categoryFromUrl) {
-      setSelectedCategory(categoryFromUrl)
-    }
-  }, [categoryFromUrl])
 
   useEffect(() => {
+    let isMounted = true
     const fetchCategories = async () => {
       try {
-        //categories
-        const res = await axios.get('http://localhost:5000/api/category/show?status=active')
-        // console.log(res);
-        
-        if (Array.isArray(res.data) && res.data.length > 0) {
-          setCategory(res.data)
-          const names = res.data.map(c => c.category || c.name).filter(Boolean)
-          const merged = ['All', ...new Set([...names, ...categories.filter(c => c !== 'All')])]
-          setCategoryList(merged)
+        const [catRes, prodRes] = await Promise.allSettled([
+          axios.get(`${API_BASE_URL}/api/category/show?status=active`),
+          axios.get(`${API_BASE_URL}/api/product/show`)
+        ])
+
+        if (!isMounted) return
+
+        if (catRes.status === 'fulfilled' && Array.isArray(catRes.value.data)) {
+          const names = catRes.value.data.map(c => c.category || c.name).filter(Boolean)
+          setCategoryList(['All', ...new Set(names)])
         }
-        //products
-        const res1 = await axios.get('http://localhost:5000/api/product/show');
-        // console.log(res1.data[0].category_id.category);
-        
-        setallProductsList(res1.data)
-      } catch (e) {
-        // use fallback categories
+
+        if (prodRes.status === 'fulfilled' && Array.isArray(prodRes.value.data)) {
+          setallProductsList(prodRes.value.data)
+        }
+      } catch {
+        // fallback handles errors gracefully
       }
     }
     fetchCategories()
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   // Filter & Sort Logic
@@ -298,21 +278,26 @@ const Product = () => {
 
                     {/* Wishlist Button (Always visible on top right) */}
                     <button
-                      className="btn btn-white rounded-circle position-absolute top-0 end-0 m-3 shadow-sm d-flex align-items-center justify-content-center p-0 z-3 border"
+                      type="button"
+                      className="btn rounded-circle position-absolute top-0 end-0 m-3 shadow-sm d-flex align-items-center justify-content-center p-0 border"
                       style={{
                         width: '36px',
                         height: '36px',
-                        transition: 'all 0.2s',
-                        backgroundColor: 'rgba(255,255,255,0.95)'
+                        transition: 'all 0.25s ease',
+                        backgroundColor: isFav ? '#fee2e2' : 'rgba(255,255,255,0.95)',
+                        borderColor: isFav ? '#fca5a5' : '#e2e8f0',
+                        cursor: 'pointer',
+                        zIndex: 20
                       }}
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
                         toggleWishlist(item)
                       }}
-                      title={isInWishlist(pId) ? "Remove from Wishlist" : "Add to Wishlist"}
+                      title={isFav ? "Remove from Wishlist" : "Add to Wishlist"}
+                      aria-label="Wishlist"
                     >
-                      <i className={`bi ${isInWishlist(pId) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'} fs-6`}></i>
+                      <i className={`bi ${isFav ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'} fs-6`}></i>
                     </button>
 
                     {/* Image Section with Quick View Hover & Slider Arrows */}
@@ -350,18 +335,19 @@ const Product = () => {
                         </>
                       )}
                       
-                      {/* Quick View on Hover */}
+                      {/* Quick View on Hover (Exact Pill Button) */}
                       <div
-                        className="position-absolute w-100 h-100 top-0 start-0 d-flex align-items-center justify-content-center" 
-                        style={{ backgroundColor: 'rgba(15, 23, 42, 0.35)', opacity: 0, transition: 'opacity 0.3s' }}
-                        onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
-                        onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
+                        className="product-quickview-overlay"
+                        onClick={() => openQuickView(item)}
+                        title="Click to Quick View"
                       >
                         <button
                           type="button"
-                          className="btn btn-dark rounded-pill shadow-lg px-3 py-2 fw-semibold d-flex align-items-center gap-1.5"
-                          style={{ fontSize: '13px', backgroundColor: '#0f172a', borderColor: '#0f172a' }}
-                          onClick={() => openQuickView(item)}
+                          className="product-quickview-pill-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openQuickView(item);
+                          }}
                         >
                           <i className="bi bi-eye"></i> Quick View
                         </button>
@@ -393,10 +379,11 @@ const Product = () => {
                       {/* Product Title */}
                       <h6
                         className="product-title-heading"
-                        onClick={() => openQuickView(item)}
                         title={item.name}
                       >
-                        {item.name}
+                        <Link to={`/product/${pId}`} className="text-decoration-none text-dark">
+                          {item.name}
+                        </Link>
                       </h6>
 
                       {/* Rating & Reviews (Only show if user has reviewed) */}
@@ -430,15 +417,18 @@ const Product = () => {
                           )}
                         </div>
 
-                        {/* Action Buttons: Add to Cart & Buy Now (Preview Mode - kuch work nahi ho) */}
+                        {/* Action Buttons: Add to Cart & Buy Now */}
                         <div className="d-flex gap-2 w-100 mt-2">
                           <button
                             type="button"
                             className="btn product-btn-cart flex-fill"
                             onClick={(e) => {
+                              e.preventDefault()
                               e.stopPropagation()
-                              showToast('Item added to cart (Preview Mode)', 'info')
+                              const added = addToCart(item, 1, navigate)
+                              if (added) navigate('/cart')
                             }}
+                            disabled={item.stockstatus === 'Out of Stock'}
                             title="Add to Cart"
                           >
                             <i className="bi bi-cart-plus fs-6"></i>
@@ -448,9 +438,11 @@ const Product = () => {
                             type="button"
                             className="btn product-btn-buy flex-fill"
                             onClick={(e) => {
+                              e.preventDefault()
                               e.stopPropagation()
-                              showToast('Online ordering disabled. Contact us to order!', 'warning')
+                              buyNow(item, 1, navigate)
                             }}
+                            disabled={item.stockstatus === 'Out of Stock'}
                             title="Buy Now"
                           >
                             <i className="bi bi-lightning-charge-fill fs-6"></i>
@@ -467,267 +459,13 @@ const Product = () => {
         </div>
       </section>
 
-      {/* QUICK VIEW MODAL COMPONENT */}
-      {quickViewProduct && (() => {
-        const modalImages = getProductImageList(quickViewProduct)
-        const safeIdx = Math.min(quickViewIdx, Math.max(0, modalImages.length - 1))
-        const currentModalImg = modalImages[safeIdx] || ''
-        const pId = quickViewProduct._id || quickViewProduct.id
-        const isFav = isInWishlist(pId)
-        const catName = quickViewProduct.category_id?.category || quickViewProduct.category || 'Electronics'
-        const price = Number(quickViewProduct.price) || 0
-        const comparePrice = Number(quickViewProduct.compareprice) || 0
-        const discountPercent = comparePrice > price ? Math.round(((comparePrice - price) / comparePrice) * 100) : 0
-        const isInStock = quickViewProduct.stockstatus === 'In Stock' || quickViewProduct.stockstatus === 'active' || quickViewProduct.inStock !== false
-
-        const handlePrevImage = () => {
-          setQuickViewIdx((prev) => (prev - 1 + modalImages.length) % modalImages.length)
-        }
-
-        const handleNextImage = () => {
-          setQuickViewIdx((prev) => (prev + 1) % modalImages.length)
-        }
-
-        return (
-          <div
-            className="modal show d-block"
-            style={{
-              backgroundColor: 'rgba(15, 23, 42, 0.65)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              zIndex: 1055,
-              transition: 'opacity 0.2s ease-in-out'
-            }}
-            onClick={closeQuickView}
-          >
-            <div
-              className="modal-dialog modal-lg modal-dialog-centered"
-              style={{ maxWidth: '860px' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="modal-content border-0 shadow-2xl rounded-4 overflow-hidden bg-white text-start">
-                {/* Modal Header */}
-                <div className="modal-header border-bottom py-3 px-4 bg-light d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="badge bg-primary bg-opacity-10 text-primary fw-semibold px-2.5 py-1.5" style={{ fontSize: '12px' }}>
-                      {catName}
-                    </span>
-                    <span className="text-muted small">Quick Overview</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-close shadow-none"
-                    aria-label="Close"
-                    onClick={closeQuickView}
-                  ></button>
-                </div>
-
-                {/* Modal Body */}
-                <div className="modal-body p-4 p-md-5">
-                  <div className="row g-4 align-items-center">
-                    {/* Left Column: Interactive Image Gallery */}
-                    <div className="col-12 col-md-6">
-                      {/* Main Image View Box */}
-                      <div
-                        className="position-relative bg-light rounded-4 p-3 d-flex align-items-center justify-content-center border overflow-hidden"
-                        style={{ height: '320px' }}
-                      >
-                        <img
-                          src={currentModalImg}
-                          alt={quickViewProduct.name}
-                          className="img-fluid"
-                          style={{
-                            maxHeight: '260px',
-                            maxWidth: '100%',
-                            objectFit: 'contain',
-                            transition: 'transform 0.3s ease'
-                          }}
-                        />
-
-                        {/* Prev & Next Arrows for Gallery */}
-                        {modalImages.length > 1 && (
-                          <>
-                            <button
-                              type="button"
-                              className="product-modal-arrow-btn prev"
-                              onClick={handlePrevImage}
-                              title="Previous Image"
-                              aria-label="Previous Image"
-                            >
-                              <i className="bi bi-chevron-left"></i>
-                            </button>
-                            <button
-                              type="button"
-                              className="product-modal-arrow-btn next"
-                              onClick={handleNextImage}
-                              title="Next Image"
-                              aria-label="Next Image"
-                            >
-                              <i className="bi bi-chevron-right"></i>
-                            </button>
-                            <span
-                              className="position-absolute bottom-0 end-0 mb-2 me-2 badge bg-dark bg-opacity-75 text-white rounded-pill px-2.5 py-1"
-                              style={{ fontSize: '11px' }}
-                            >
-                              {safeIdx + 1} / {modalImages.length}
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Gallery Thumbnails */}
-                      {modalImages.length > 1 && (
-                        <div className="d-flex gap-2 mt-3 flex-wrap justify-content-center">
-                          {modalImages.map((imgUrl, i) => {
-                            const isSelected = i === safeIdx
-                            return (
-                              <button
-                                key={i}
-                                type="button"
-                                className="btn p-1 border rounded-3 bg-white"
-                                style={{
-                                  width: '58px',
-                                  height: '58px',
-                                  borderColor: isSelected ? '#ff4500' : '#e2e8f0',
-                                  borderWidth: isSelected ? '2px' : '1px',
-                                  boxShadow: isSelected ? '0 0 0 3px rgba(255, 69, 0, 0.2)' : 'none',
-                                  transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                                  transition: 'all 0.2s ease'
-                                }}
-                                onClick={() => setQuickViewIdx(i)}
-                              >
-                                <img
-                                  src={imgUrl}
-                                  alt={`Thumbnail ${i + 1}`}
-                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                />
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right Column: Product Info & Actions */}
-                    <div className="col-12 col-md-6 d-flex flex-column">
-                      {/* Brand & Stock */}
-                      <div className="d-flex align-items-center justify-content-between mb-2">
-                        <span className="text-uppercase fw-semibold text-muted" style={{ fontSize: '12px', letterSpacing: '0.8px' }}>
-                          {quickViewProduct.brand || 'SIPL Brand'}
-                        </span>
-                        {isInStock ? (
-                          <span className="badge bg-success bg-opacity-10 text-success px-2.5 py-1 rounded-pill fw-semibold" style={{ fontSize: '12px' }}>
-                            <i className="bi bi-check-circle-fill me-1"></i> In Stock
-                          </span>
-                        ) : (
-                          <span className="badge bg-danger bg-opacity-10 text-danger px-2.5 py-1 rounded-pill fw-semibold" style={{ fontSize: '12px' }}>
-                            <i className="bi bi-x-circle-fill me-1"></i> Out of Stock
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Product Name */}
-                      <h4 className="fw-bold text-dark mb-2" style={{ lineHeight: '1.3' }}>
-                        {quickViewProduct.name}
-                      </h4>
-
-                      {/* Rating & Reviews (Only show if user has reviewed) */}
-                      {Boolean(quickViewProduct.reviews && Number(quickViewProduct.reviews) > 0 && quickViewProduct.rating) && (
-                        <div className="d-flex align-items-center gap-2 mb-3" style={{ fontSize: '13px' }}>
-                          <div className="text-warning d-flex">
-                            <i className="bi bi-star-fill"></i>
-                            <i className="bi bi-star-fill"></i>
-                            <i className="bi bi-star-fill"></i>
-                            <i className="bi bi-star-fill"></i>
-                            <i className="bi bi-star-fill"></i>
-                          </div>
-                          <span className="fw-bold text-dark">{quickViewProduct.rating}</span>
-                          <span className="text-muted small">({quickViewProduct.reviews} reviews)</span>
-                        </div>
-                      )}
-
-                      {/* Price Section */}
-                      <div className="p-3 rounded-3 mb-3" style={{ backgroundColor: '#fff5f0', border: '1px solid #ffe4d6' }}>
-                        <div className="d-flex align-items-baseline gap-2">
-                          <span className="fs-3 fw-bold" style={{ color: '#ff4500' }}>
-                            ₹{price.toLocaleString('en-IN')}
-                          </span>
-                          {comparePrice > price && (
-                            <span className="text-muted text-decoration-line-through fs-6">
-                              ₹{comparePrice.toLocaleString('en-IN')}
-                            </span>
-                          )}
-                          {discountPercent > 0 && (
-                            <span className="badge bg-danger text-white ms-auto fw-bold px-2 py-1" style={{ fontSize: '12px' }}>
-                              {discountPercent}% OFF
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-muted" style={{ fontSize: '11.5px' }}>Inclusive of all taxes & standard delivery</span>
-                      </div>
-
-                      {/* Description */}
-                      <p className="text-muted mb-3" style={{ fontSize: '13.5px', lineHeight: '1.6' }}>
-                        {quickViewProduct.description ||
-                         quickViewProduct.shortdescription ||
-                         'High performance electronics component built with industry standards for reliability, durability, and top performance in modern circuits and robotics projects.'}
-                      </p>
-
-                      {/* Modal Action Buttons: Add to Cart, Buy Now & Wishlist (Preview Mode) */}
-                      <div className="d-flex gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          className="btn product-btn-cart flex-fill py-2.5 fw-semibold"
-                          onClick={() => showToast('Item added to cart (Preview Mode)', 'info')}
-                          title="Add to Cart"
-                        >
-                          <i className="bi bi-cart-plus me-1.5 fs-5"></i>
-                          <span>Add to Cart</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          className="btn product-btn-buy flex-fill py-2.5 fw-semibold"
-                          onClick={() => showToast('Online ordering disabled. Contact us to order!', 'warning')}
-                          title="Buy Now"
-                        >
-                          <i className="bi bi-lightning-charge-fill me-1.5 fs-5"></i>
-                          <span>Buy Now</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          className="btn p-2.5 border rounded-3 d-flex align-items-center justify-content-center"
-                          style={{ width: '46px', borderColor: '#e2e8f0', backgroundColor: '#f8fafc' }}
-                          onClick={() => {
-                            toggleWishlist(quickViewProduct)
-                          }}
-                          title={isInWishlist(pId) ? "Remove from Wishlist" : "Add to Wishlist"}
-                        >
-                          <i className={`bi ${isInWishlist(pId) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'} fs-5`}></i>
-                        </button>
-                      </div>
-
-                      {/* Assurance Badges */}
-                      <div className="d-flex justify-content-between pt-3 mt-3 border-top text-muted" style={{ fontSize: '12px' }}>
-                        <div className="d-flex align-items-center gap-1">
-                          <i className="bi bi-shield-check text-success"></i> 100% Genuine
-                        </div>
-                        <div className="d-flex align-items-center gap-1">
-                          <i className="bi bi-truck text-primary"></i> Fast Shipping
-                        </div>
-                        <div className="d-flex align-items-center gap-1">
-                          <i className="bi bi-arrow-repeat text-warning"></i> Easy Returns
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      {/* LUXURY PROFESSIONAL QUICK VIEW MODAL */}
+      {quickViewProduct && (
+        <QuickViewModal
+          product={quickViewProduct}
+          onClose={closeQuickView}
+        />
+      )}
 
       <Footer />
     </>

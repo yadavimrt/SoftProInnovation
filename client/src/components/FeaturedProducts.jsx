@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useCart } from '../context/CartContext';
+import QuickViewModal from './QuickViewModal';
+import { API_BASE_URL } from '../config/api';
+import { formatImg } from '../utils/imageUrl';
 
 import img12 from '../assets/12.png';
 import img13 from '../assets/13.png';
@@ -105,32 +108,20 @@ const fallbackProducts = [
 
 const FeaturedProducts = () => {
   const navigate = useNavigate();
-  const { toggleWishlist, isInWishlist, showToast } = useCart();
+  const { addToCart, buyNow, toggleWishlist, isInWishlist } = useCart();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cardImageIndexMap, setCardImageIndexMap] = useState({}); // { [productId]: currentImageIndex }
   const [quickViewProduct, setQuickViewProduct] = useState(null);
-  const [quickViewIdx, setQuickViewIdx] = useState(0);
-
-  const formatImg = (imgPath) => {
-    if (!imgPath) return '';
-    if (
-      imgPath.startsWith('http://') ||
-      imgPath.startsWith('https://') ||
-      imgPath.startsWith('data:')
-    ) {
-      return imgPath;
-    }
-    return `http://localhost:5000/${imgPath.replace(/\\/g, '/')}`;
-  };
 
   useEffect(() => {
+    let isMounted = true;
     const fetchFeatured = async () => {
       try {
         setLoading(true);
-        const res = await axios.get('http://localhost:5000/api/product/show');
+        const res = await axios.get(`${API_BASE_URL}/api/product/show`);
+        if (!isMounted) return;
         if (Array.isArray(res.data) && res.data.length > 0) {
-          // Filter products with is_feature === true and status === 'active'
           const featuredOnly = res.data.filter(
             (p) => p.is_feature === true && (p.status === 'active' || !p.status)
           );
@@ -143,31 +134,27 @@ const FeaturedProducts = () => {
         } else {
           setProducts(fallbackProducts);
         }
-      } catch (e) {
-        console.warn('Could not fetch featured products from server, using fallback', e.message);
-        setProducts(fallbackProducts);
+      } catch {
+        if (isMounted) setProducts(fallbackProducts);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     fetchFeatured();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const toggleFavorite = (id) => {
-    setFavorites((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
   const openQuickView = (product) => {
-    setQuickViewProduct(product);
-    setQuickViewIdx(0);
+    const prodId = product._id || product.id;
+    if (prodId) {
+      navigate(`/product/${prodId}`);
+    }
   };
 
   const closeQuickView = () => {
     setQuickViewProduct(null);
-    setQuickViewIdx(0);
   };
 
   // Helper to extract all images for a product
@@ -295,23 +282,28 @@ const FeaturedProducts = () => {
 
                     {/* Wishlist Button */}
                     <button
-                      className="btn btn-white rounded-circle position-absolute top-0 end-0 m-3 shadow-sm d-flex align-items-center justify-content-center p-0 z-3 border"
+                      type="button"
+                      className="btn rounded-circle position-absolute top-0 end-0 m-3 shadow-sm d-flex align-items-center justify-content-center p-0 border"
                       style={{
                         width: '36px',
                         height: '36px',
-                        transition: 'all 0.2s',
-                        backgroundColor: 'rgba(255,255,255,0.9)',
+                        transition: 'all 0.25s ease',
+                        backgroundColor: isInWishlist(item._id || item.id || id) ? '#fee2e2' : 'rgba(255,255,255,0.95)',
+                        borderColor: isInWishlist(item._id || item.id || id) ? '#fca5a5' : '#e2e8f0',
+                        cursor: 'pointer',
+                        zIndex: 20
                       }}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         toggleWishlist(item);
                       }}
-                      title={isInWishlist(id) ? "Remove from Wishlist" : "Add to Wishlist"}
+                      title={isInWishlist(item._id || item.id || id) ? "Remove from Wishlist" : "Add to Wishlist"}
+                      aria-label="Wishlist"
                     >
                       <i
                         className={`bi ${
-                          isInWishlist(id) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'
+                          isInWishlist(item._id || item.id || id) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'
                         } fs-6`}
                       ></i>
                     </button>
@@ -409,23 +401,21 @@ const FeaturedProducts = () => {
                         </div>
                       )}
 
-                      {/* Quick View Button */}
+                      {/* Quick View on Hover (Exact Pill Button) */}
                       <div
-                        className="product-card-overlay position-absolute w-100 h-100 top-0 start-0 d-flex align-items-center justify-content-center"
-                        style={{
-                          backgroundColor: 'rgba(255,255,255,0.4)',
-                          opacity: 0,
-                          transition: 'opacity 0.3s',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
-                        onMouseLeave={(e) => (e.currentTarget.style.opacity = 0)}
+                        className="product-quickview-overlay"
+                        onClick={() => openQuickView(item)}
+                        title="Click to Quick View"
                       >
                         <button
-                          className="btn btn-dark rounded-pill shadow-sm px-4 py-2 fw-semibold btn-view-action"
-                          style={{ fontSize: '13px' }}
-                          onClick={() => openQuickView(item)}
+                          type="button"
+                          className="product-quickview-pill-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openQuickView(item);
+                          }}
                         >
-                          <i className="bi bi-eye me-1"></i> Quick View (All Images)
+                          <i className="bi bi-eye"></i> Quick View
                         </button>
                       </div>
                     </div>
@@ -455,10 +445,11 @@ const FeaturedProducts = () => {
                       {/* Product Title */}
                       <h6
                         className="product-title-heading"
-                        onClick={() => openQuickView(item)}
                         title={title}
                       >
-                        {title}
+                        <Link to={`/product/${id}`} className="text-decoration-none text-dark">
+                          {title}
+                        </Link>
                       </h6>
 
                       {/* Rating & Reviews (Only show if user has reviewed) */}
@@ -492,15 +483,17 @@ const FeaturedProducts = () => {
                           )}
                         </div>
 
-                        {/* Action Buttons: Add to Cart & Buy Now (Preview Mode - kuch work nahi ho) */}
+                        {/* Action Buttons: Add to Cart & Buy Now */}
                         <div className="d-flex gap-2 w-100 mt-2">
                           <button
                             type="button"
                             className="btn product-btn-cart flex-fill"
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
-                              showToast('Item added to cart (Preview Mode)', 'info');
+                              addToCart(item, 1);
                             }}
+                            disabled={!inStock}
                             title="Add to Cart"
                           >
                             <i className="bi bi-cart-plus fs-6"></i>
@@ -510,9 +503,11 @@ const FeaturedProducts = () => {
                             type="button"
                             className="btn product-btn-buy flex-fill"
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
-                              showToast('Online ordering disabled. Contact us to order!', 'warning');
+                              buyNow(item, 1, navigate);
                             }}
+                            disabled={!inStock}
                             title="Buy Now"
                           >
                             <i className="bi bi-lightning-charge-fill fs-6"></i>
@@ -528,211 +523,13 @@ const FeaturedProducts = () => {
           </div>
         )}
 
-        {/* Quick View Interactive Slide Modal */}
-        {quickViewProduct && (() => {
-          const modalImages = getProductImageList(quickViewProduct);
-          const safeIdx = Math.min(quickViewIdx, Math.max(0, modalImages.length - 1));
-          const currentModalImg = modalImages[safeIdx] || '';
-
-          const handlePrevImage = () => {
-            setQuickViewIdx((prev) => (prev - 1 + modalImages.length) % modalImages.length);
-          };
-
-          const handleNextImage = () => {
-            setQuickViewIdx((prev) => (prev + 1) % modalImages.length);
-          };
-
-          return (
-            <div
-              className="modal show d-block"
-              style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', zIndex: 1050 }}
-              onClick={closeQuickView}
-            >
-              <div
-                className="modal-dialog modal-lg modal-dialog-centered"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                  <div className="modal-header border-0 bg-light p-3 px-4">
-                    <h5 className="modal-title fw-bold text-dark mb-0" style={{ fontSize: '17px' }}>
-                      {quickViewProduct.name || quickViewProduct.title}
-                    </h5>
-                    <button
-                      type="button"
-                      className="btn-close"
-                      aria-label="Close"
-                      onClick={closeQuickView}
-                    ></button>
-                  </div>
-                  <div className="modal-body p-4">
-                    <div className="row g-4">
-                      {/* Left: Interactive Image Slider with Arrows & Thumbnails */}
-                      <div className="col-12 col-md-6">
-                        {/* Slide Box Container */}
-                        <div
-                          className="position-relative bg-white rounded-4 p-3 d-flex align-items-center justify-content-center border mb-3 overflow-hidden shadow-xs"
-                          style={{ height: '300px', backgroundColor: '#f8fafc' }}
-                        >
-                          <img
-                            src={currentModalImg}
-                            alt={`Product Slide ${safeIdx + 1}`}
-                            className="img-fluid"
-                            style={{
-                              maxHeight: '260px',
-                              maxWidth: '100%',
-                              objectFit: 'contain',
-                              transition: 'all 0.3s ease',
-                            }}
-                          />
-
-                          {/* Slider Navigation Arrows */}
-                          {modalImages.length > 1 && (
-                            <>
-                              <button
-                                type="button"
-                                className="product-modal-arrow-btn prev"
-                                onClick={handlePrevImage}
-                                title="Previous image"
-                                aria-label="Previous image"
-                              >
-                                <i className="bi bi-chevron-left"></i>
-                              </button>
-
-                              <button
-                                type="button"
-                                className="product-modal-arrow-btn next"
-                                onClick={handleNextImage}
-                                title="Next image"
-                                aria-label="Next image"
-                              >
-                                <i className="bi bi-chevron-right"></i>
-                              </button>
-
-                              {/* Slide Counter */}
-                              <span
-                                className="position-absolute bottom-0 end-0 mb-2 me-2 badge bg-dark bg-opacity-75 text-white rounded-pill px-2.5 py-1"
-                                style={{ fontSize: '11px' }}
-                              >
-                                {safeIdx + 1} / {modalImages.length}
-                              </span>
-                            </>
-                          )}
-                        </div>
-
-                        {/* All Image Thumbnails Strip */}
-                        {modalImages.length > 1 && (
-                          <div className="d-flex gap-2 flex-wrap justify-content-center">
-                            {modalImages.map((imgUrl, i) => {
-                              const isSelected = i === safeIdx;
-                              return (
-                                <button
-                                  key={i}
-                                  type="button"
-                                  className="btn p-1 border rounded-3 bg-white"
-                                  style={{
-                                    width: '60px',
-                                    height: '60px',
-                                    borderColor: isSelected ? '#3945E0' : '#e2e8f0',
-                                    borderWidth: isSelected ? '2px' : '1px',
-                                    boxShadow: isSelected
-                                      ? '0 0 0 3px rgba(57, 69, 224, 0.22)'
-                                      : 'none',
-                                    transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                                    transition: 'all 0.2s ease',
-                                  }}
-                                  onClick={() => setQuickViewIdx(i)}
-                                  title={`Slide to image ${i + 1}`}
-                                >
-                                  <img
-                                    src={imgUrl}
-                                    alt={`Gallery ${i + 1}`}
-                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                  />
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Right: Product Info */}
-                      <div className="col-12 col-md-6 d-flex flex-column">
-                        <span className="badge bg-primary bg-opacity-10 text-primary w-auto align-self-start px-2 py-1 mb-2">
-                          {quickViewProduct.category_id?.category ||
-                            quickViewProduct.category ||
-                            'Electronics'}
-                        </span>
-
-                        <h4 className="fw-bold text-dark mb-2">
-                          {quickViewProduct.name || quickViewProduct.title}
-                        </h4>
-
-                        <p className="text-muted small mb-3">
-                          {quickViewProduct.shortdescription ||
-                            quickViewProduct.description ||
-                            'High performance electronics module designed for makers and engineers.'}
-                        </p>
-
-                        <div className="d-flex align-items-baseline gap-2 mb-3">
-                          <span className="fs-3 fw-bold text-danger">
-                            ₹{(quickViewProduct.price || 0).toLocaleString('en-IN')}
-                          </span>
-                          {quickViewProduct.compareprice > quickViewProduct.price && (
-                            <span className="text-muted text-decoration-line-through">
-                              ₹{quickViewProduct.compareprice.toLocaleString('en-IN')}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="mb-3">
-                          <span className="text-muted small d-block mb-1">Stock Status:</span>
-                          <span className="badge bg-success bg-opacity-10 text-success px-2.5 py-1.5 fw-semibold">
-                            {quickViewProduct.stockstatus || 'In Stock'}
-                          </span>
-                        </div>
-
-                        {/* Modal Action Buttons: Add to Cart, Buy Now & Wishlist (Preview Mode) */}
-                        <div className="mt-auto d-flex gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            className="btn product-btn-cart flex-fill py-2.5 fw-semibold"
-                            onClick={() => showToast('Item added to cart (Preview Mode)', 'info')}
-                            title="Add to Cart"
-                          >
-                            <i className="bi bi-cart-plus me-1.5 fs-5"></i>
-                            <span>Add to Cart</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            className="btn product-btn-buy flex-fill py-2.5 fw-semibold"
-                            onClick={() => showToast('Online ordering disabled. Contact us to order!', 'warning')}
-                            title="Buy Now"
-                          >
-                            <i className="bi bi-lightning-charge-fill me-1.5 fs-5"></i>
-                            <span>Buy Now</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            className="btn p-2.5 border rounded-3 d-flex align-items-center justify-content-center"
-                            style={{ width: '46px', borderColor: '#e2e8f0', backgroundColor: '#f8fafc' }}
-                            onClick={() => {
-                              toggleWishlist(quickViewProduct);
-                            }}
-                            title={isInWishlist(quickViewProduct._id || quickViewProduct.id) ? "Remove from Wishlist" : "Add to Wishlist"}
-                          >
-                            <i className={`bi ${isInWishlist(quickViewProduct._id || quickViewProduct.id) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'} fs-5`}></i>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+        {/* LUXURY PROFESSIONAL QUICK VIEW MODAL */}
+        {quickViewProduct && (
+          <QuickViewModal
+            product={quickViewProduct}
+            onClose={closeQuickView}
+          />
+        )}
       </div>
     </section>
   );

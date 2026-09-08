@@ -1,26 +1,19 @@
-import React from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { useCart } from '../../context/CartContext';
+import QuickViewModal from '../../components/QuickViewModal';
+import { formatImg } from '../../utils/imageUrl';
 
 const Wishlist = () => {
   const navigate = useNavigate();
-  const { wishlistItems, removeFromWishlist } = useCart();
+  const { wishlistItems, removeFromWishlist, addToCart } = useCart();
+  const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   const getImageSrc = (item) => {
-    if (item.thumbnail) {
-      if (item.thumbnail.startsWith('http://') || item.thumbnail.startsWith('https://')) {
-        return item.thumbnail;
-      }
-      return `http://localhost:5000/${item.thumbnail.replace(/\\/g, '/')}`;
-    }
-    if (item.images && item.images.length > 0) {
-      const first = item.images[0];
-      if (first.startsWith('http://') || first.startsWith('https://')) return first;
-      return `http://localhost:5000/${first.replace(/\\/g, '/')}`;
-    }
-    return 'https://via.placeholder.com/200';
+    const raw = item?.thumbnail || (item?.images && item.images.length > 0 ? item.images[0] : null);
+    return formatImg(raw, 'https://placehold.co/200x200?text=No+Image');
   };
 
   return (
@@ -43,7 +36,28 @@ const Wishlist = () => {
             </Link>
           </div>
 
-          {wishlistItems.length === 0 ? (
+          {!localStorage.getItem('token') ? (
+            /* Unauthenticated State */
+            <div className="card border-0 shadow-sm rounded-4 p-5 text-center my-5 mx-auto" style={{ maxWidth: '540px' }}>
+              <div
+                className="rounded-circle bg-primary bg-opacity-10 text-primary mx-auto d-flex align-items-center justify-content-center mb-3"
+                style={{ width: '80px', height: '80px' }}
+              >
+                <i className="bi bi-person-lock fs-1"></i>
+              </div>
+              <h4 className="fw-bold text-dark mb-2">Please Log In</h4>
+              <p className="text-muted small mb-4">
+                Log in to your account to view and manage your saved electronics and wishlist items.
+              </p>
+              <Link
+                to="/login"
+                className="btn btn-primary px-4 py-2 rounded-pill fw-semibold text-white text-decoration-none mx-auto"
+                style={{ backgroundColor: '#1d4ed8', width: 'fit-content' }}
+              >
+                <i className="bi bi-box-arrow-in-right me-2"></i> Log In to Account
+              </Link>
+            </div>
+          ) : wishlistItems.length === 0 ? (
             /* Empty State */
             <div className="card border-0 shadow-sm rounded-4 p-5 text-center my-5 mx-auto" style={{ maxWidth: '540px' }}>
               <div
@@ -88,13 +102,31 @@ const Wishlist = () => {
                       </button>
 
                       {/* Image Box */}
-                      <div className="product-img-box d-flex align-items-center justify-content-center p-3 bg-white" style={{ height: '200px' }}>
+                      <div className="product-img-box d-flex align-items-center justify-content-center p-3 bg-white position-relative overflow-hidden" style={{ height: '200px' }}>
                         <img
                           src={getImageSrc(item)}
                           alt={item.name}
                           className="img-fluid"
                           style={{ maxHeight: '150px', objectFit: 'contain' }}
                         />
+
+                        {/* Quick View on Hover (Direct Redirect) */}
+                        <div
+                          className="product-quickview-overlay"
+                          onClick={() => navigate(`/product/${item._id || item.id}`)}
+                          title="View Product Details"
+                        >
+                          <button
+                            type="button"
+                            className="product-quickview-pill-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/product/${item._id || item.id}`);
+                            }}
+                          >
+                            <i className="bi bi-eye"></i> Quick View
+                          </button>
+                        </div>
                       </div>
 
                       {/* Card Content */}
@@ -113,7 +145,9 @@ const Wishlist = () => {
                             overflow: 'hidden',
                           }}
                         >
-                          {item.name}
+                          <Link to={`/product/${item._id || item.id}`} className="text-decoration-none text-dark">
+                            {item.name}
+                          </Link>
                         </h6>
 
                         {/* Stock Status */}
@@ -144,11 +178,22 @@ const Wishlist = () => {
 
                         {/* Action Buttons */}
                         <div className="d-flex gap-2">
-                          <Link
-                            to="/Product"
-                            className="btn product-btn-view flex-grow-1 py-2 fw-semibold rounded-2 text-decoration-none"
+                          <button
+                            type="button"
+                            className="btn btn-primary flex-grow-1 py-2 fw-semibold rounded-2 d-flex align-items-center justify-content-center gap-1.5"
+                            onClick={() => addToCart(item, 1)}
+                            disabled={!inStock}
+                            title="Add to Cart"
                           >
-                            <i className="bi bi-eye me-1"></i> View Product
+                            <i className="bi bi-cart-plus"></i>
+                            <span>Add to Cart</span>
+                          </button>
+                          <Link
+                            to={`/product/${item._id || item.id}`}
+                            className="btn btn-outline-primary py-2 px-3 fw-semibold rounded-2 text-decoration-none d-flex align-items-center justify-content-center"
+                            title="View Product"
+                          >
+                            <i className="bi bi-eye"></i>
                           </Link>
                           <button
                             type="button"
@@ -168,6 +213,15 @@ const Wishlist = () => {
           )}
         </div>
       </div>
+
+      {/* LUXURY PROFESSIONAL QUICK VIEW MODAL */}
+      {quickViewProduct && (
+        <QuickViewModal
+          product={quickViewProduct}
+          onClose={() => setQuickViewProduct(null)}
+        />
+      )}
+
       <Footer />
     </>
   );

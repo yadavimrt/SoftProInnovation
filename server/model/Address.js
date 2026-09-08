@@ -78,5 +78,5 @@ addressSchema.virtual('Address').get(function () {
     return this.address;
 });
 
-const Address = mongoose.model('Address', addressSchema);
+const Address = mongoose.models.Address || mongoose.model('Address', addressSchema);
 module.exports = Address;

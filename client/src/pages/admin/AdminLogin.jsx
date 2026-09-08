@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import logo from '../../assets/logo.png'
+import { API_BASE_URL } from '../../config/api'
 
 const AdminLogin = () => {
     const navigate = useNavigate()
@@ -28,12 +29,21 @@ const AdminLogin = () => {
         setError('')
 
         try {
-            const res = await axios.post('http://localhost:5000/api/admin/login', data)
+            const res = await axios.post(`${API_BASE_URL}/api/admin/login`, data)
             if (res.data.msg === 'Sucess') {
                 localStorage.setItem('name', res.data.name)
                 localStorage.setItem('role', res.data.role)
                 localStorage.setItem('token', res.data.token)
                 localStorage.setItem('adminId', res.data.adminId)
+                if (res.data.user) {
+                    localStorage.setItem('user', JSON.stringify(res.data.user))
+                    if (res.data.user.picture) {
+                        localStorage.setItem('picture', res.data.user.picture)
+                    } else {
+                        localStorage.removeItem('picture')
+                    }
+                }
+                window.dispatchEvent(new Event('userSessionChange'))
                 navigate('/dashboard')
             } else {
                 setError(res.data.msg || 'Email or password is incorrect.')
