@@ -13,6 +13,8 @@ const Products = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStockStatus, setSelectedStockStatus] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
 
   // Modal State for Quick View
@@ -109,6 +111,19 @@ const Products = () => {
     }
   };
 
+  const handleToggleFeature = async (product) => {
+    const nextFeature = !product.is_feature;
+    try {
+      setProducts(prev => prev.map(p => p._id === product._id ? { ...p, is_feature: nextFeature } : p));
+      await axios.patch(`${API_BASE_URL}/api/product/patch/${product._id}`, {
+        is_feature: nextFeature
+      });
+      showAlert('success', `Product "${product.name}" ${nextFeature ? 'added to' : 'removed from'} Featured items.`);
+    } catch {
+      setProducts(prev => prev.map(p => p._id === product._id ? { ...p, is_feature: !nextFeature } : p));
+      showAlert('danger', 'Failed to update featured status.');
+    }
+  };
 
   // Filter Logic
   const filteredProducts = products.filter(item => {
@@ -122,7 +137,11 @@ const Products = () => {
 
     const matchesStock = selectedStockStatus === 'all' || (item.stockstatus || '').toLowerCase() === selectedStockStatus.toLowerCase();
 
-    const matchesStatus = selectedStatus === 'all' || (item.status || 'active').toLowerCase() === selectedStatus.toLowerCase();
+    const matchesStatus = selectedStatus === 'all'
+      ? true
+      : selectedStatus === 'featured'
+      ? Boolean(item.is_feature)
+      : (item.status || 'active').toLowerCase() === selectedStatus.toLowerCase();
 
     return matchesSearch && matchesCategory && matchesStock && matchesStatus;
   });
@@ -132,6 +151,51 @@ const Products = () => {
   const inStockCount = products.filter(p => (p.stockstatus || '').toLowerCase() === 'in stock').length;
   const outOfStockCount = products.filter(p => (p.stockstatus || '').toLowerCase() === 'out of stock' || (p.stockquantity || 0) === 0).length;
   const featuredCount = products.filter(p => p.is_feature).length;
+
+  // Reset page to 1 whenever search/filters or itemsPerPage change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory, selectedStockStatus, selectedStatus, itemsPerPage]);
+
+  // Pagination Calculations
+  const totalItems = filteredProducts.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
+      setCurrentPage(newPage);
+      const tableElem = document.querySelector('.prod-table-container');
+      if (tableElem) {
+        tableElem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  };
 
   return (
     <>
@@ -227,10 +291,17 @@ const Products = () => {
         </div>
 
         <div className="col-6 col-lg-3">
-          <div className="prod-metric-card prod-metric-featured">
+          <div
+            className={`prod-metric-card prod-metric-featured ${selectedStatus === 'featured' ? 'border-warning shadow-sm' : ''}`}
+            style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+            onClick={() => setSelectedStatus(prev => prev === 'featured' ? 'all' : 'featured')}
+            title="Click to view featured products"
+          >
             <div className="d-flex align-items-center justify-content-between">
               <div>
-                <span className="prod-metric-label">Featured Items</span>
+                <span className="prod-metric-label">
+                  Featured Items {selectedStatus === 'featured' && '✓'}
+                </span>
                 <div className="prod-metric-val" style={{ color: '#d97706' }}>{featuredCount}</div>
               </div>
               <div className="prod-metric-icon prod-icon-amber">
@@ -307,6 +378,7 @@ const Products = () => {
               <option value="all">🌐 All Status</option>
               <option value="active">Active Only</option>
               <option value="inactive">Inactive Only</option>
+              <option value="featured">⭐ Featured Only</option>
             </select>
           </div>
         </div>
@@ -358,7 +430,7 @@ const Products = () => {
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((prod, index) => {
+                paginatedProducts.map((prod, index) => {
                   const thumbUrl = formatImg(prod.thumbnail, null);
                   const catName = prod.category_id?.category || prod.category_id?.name || 'General';
                   const isActive = prod.status === 'active';
@@ -370,7 +442,7 @@ const Products = () => {
                     <tr key={prod._id || index}>
                       {/* S.No */}
                       <td className="text-center">
-                        <span className="prod-sno-badge">{index + 1}</span>
+                        <span className="prod-sno-badge">{startIndex + index + 1}</span>
                       </td>
 
                       {/* Thumbnail */}
@@ -395,15 +467,24 @@ const Products = () => {
                       {/* Product Details */}
                       <td>
                         <div>
-                          <div className="d-flex align-items-center gap-1.5 mb-1 flex-wrap">
+                          <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
                             <span className="prod-name">
                               {prod.name}
                             </span>
-                            {prod.is_feature && (
-                              <span className="prod-badge-featured">
-                                <i className="bi bi-star-fill text-warning"></i> Featured
-                              </span>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleFeature(prod)}
+                              className={`btn btn-sm p-0 border-0 d-inline-flex align-items-center gap-1 ${prod.is_feature ? 'text-warning' : 'text-muted'}`}
+                              title={prod.is_feature ? "Featured on homepage (click to remove)" : "Click to mark as Featured"}
+                              style={{ background: 'none', cursor: 'pointer', transition: 'all 0.2s ease', opacity: prod.is_feature ? 1 : 0.45 }}
+                            >
+                              <i className={`bi ${prod.is_feature ? 'bi-star-fill text-warning' : 'bi-star'}`}></i>
+                              {prod.is_feature && (
+                                <span className="prod-badge-featured">
+                                  Featured
+                                </span>
+                              )}
+                            </button>
                           </div>
                           <p className="prod-desc-text">
                             {prod.shortdescription || 'No summary provided for this item'}
@@ -489,6 +570,15 @@ const Products = () => {
                       {/* Action Buttons */}
                       <td className="text-end">
                         <div className="d-inline-flex gap-1.5">
+                          {/* Quick Feature Toggle Button */}
+                          <button
+                            type="button"
+                            className={`prod-action-btn ${prod.is_feature ? 'border-warning bg-warning bg-opacity-10 text-warning' : ''}`}
+                            title={prod.is_feature ? "Remove from Featured" : "Mark as Featured"}
+                            onClick={() => handleToggleFeature(prod)}
+                          >
+                            <i className={`bi ${prod.is_feature ? 'bi-star-fill text-warning' : 'bi-star'}`}></i>
+                          </button>
                           {/* Quick View Button */}
                           <button
                             type="button"
@@ -528,22 +618,131 @@ const Products = () => {
           </table>
         </div>
 
-        {/* Table Footer Summary */}
-        {!loading && filteredProducts.length > 0 && (
+        {/* Table Footer with Premium Pagination */}
+        {!loading && totalItems > 0 && (
           <div className="prod-table-footer">
-            <div>
-              Showing <strong className="text-dark">{filteredProducts.length}</strong> of{' '}
-              <strong className="text-dark">{totalCount}</strong> products
+            {/* Left Section: Info & Rows Per Page */}
+            <div className="prod-footer-left">
+              <div className="prod-showing-pill">
+                <i className="bi bi-layers-half text-primary"></i>
+                <span>
+                  Showing <strong className="text-dark">{startIndex + 1}&ndash;{endIndex}</strong> of{' '}
+                  <strong className="text-dark">{totalItems}</strong> items
+                </span>
+                {totalItems !== totalCount && (
+                  <span className="prod-filtered-badge">Filtered</span>
+                )}
+              </div>
+
+              <div className="prod-rows-selector">
+                <span className="prod-rows-label">Per page</span>
+                <div className="prod-custom-select-wrap">
+                  <select
+                    id="itemsPerPageSelect"
+                    className="prod-rows-select"
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <i className="bi bi-chevron-down prod-select-arrow"></i>
+                </div>
+              </div>
+
+              <div className="prod-stat-chips-wrap d-none d-xl-flex">
+                <span className="prod-chip prod-chip-instock">
+                  <span className="prod-chip-indicator bg-success"></span>
+                  {inStockCount} In Stock
+                </span>
+                <span className="prod-chip prod-chip-featured">
+                  <i className="bi bi-star-fill text-warning"></i>
+                  {featuredCount} Featured
+                </span>
+              </div>
             </div>
-            <div className="d-flex align-items-center gap-3">
-              <span>
-                <i className="bi bi-circle-fill text-success me-1" style={{ fontSize: '8px' }}></i>
-                {inStockCount} In Stock
-              </span>
-              <span>
-                <i className="bi bi-circle-fill text-warning me-1" style={{ fontSize: '8px' }}></i>
-                {featuredCount} Featured
-              </span>
+
+            {/* Right Section: Pagination Nav Controls */}
+            <div className="prod-footer-right">
+              <div className="prod-page-counter-badge d-none d-sm-inline-flex">
+                Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+              </div>
+
+              {totalPages > 1 && (
+                <nav className="prod-pagination-cluster" aria-label="Product table pagination">
+                  {/* First Page Button */}
+                  {totalPages > 4 && (
+                    <button
+                      type="button"
+                      className="prod-nav-icon-btn"
+                      disabled={currentPage === 1}
+                      onClick={() => handlePageChange(1)}
+                      title="First page"
+                    >
+                      <i className="bi bi-chevron-bar-left"></i>
+                    </button>
+                  )}
+
+                  {/* Previous Page Button */}
+                  <button
+                    type="button"
+                    className="prod-nav-arrow-btn"
+                    disabled={currentPage === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    title="Previous page"
+                  >
+                    <i className="bi bi-chevron-left"></i>
+                    <span className="d-none d-md-inline">Prev</span>
+                  </button>
+
+                  {/* Segmented Numbers Group */}
+                  <div className="prod-numbers-container">
+                    {getPageNumbers().map((p, idx) =>
+                      p === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="prod-ellipsis-span">
+                          &bull;&bull;&bull;
+                        </span>
+                      ) : (
+                        <button
+                          key={`page-${p}`}
+                          type="button"
+                          className={`prod-num-btn ${currentPage === p ? 'active' : ''}`}
+                          onClick={() => handlePageChange(p)}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  {/* Next Page Button */}
+                  <button
+                    type="button"
+                    className="prod-nav-arrow-btn"
+                    disabled={currentPage === totalPages}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    title="Next page"
+                  >
+                    <span className="d-none d-md-inline">Next</span>
+                    <i className="bi bi-chevron-right"></i>
+                  </button>
+
+                  {/* Last Page Button */}
+                  {totalPages > 4 && (
+                    <button
+                      type="button"
+                      className="prod-nav-icon-btn"
+                      disabled={currentPage === totalPages}
+                      onClick={() => handlePageChange(totalPages)}
+                      title="Last page"
+                    >
+                      <i className="bi bi-chevron-bar-right"></i>
+                    </button>
+                  )}
+                </nav>
+              )}
             </div>
           </div>
         )}

@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../../config/api';
 import { formatImg } from '../../utils/imageUrl';
+import './Products.css';
 
 const Inventory = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [stockFilter, setStockFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Stock Update Modal State
   const [editingProduct, setEditingProduct] = useState(null);
@@ -115,6 +118,52 @@ const Inventory = () => {
     return matchesSearch && matchesFilter;
   });
 
+  // Reset page to 1 whenever search, stockFilter, or itemsPerPage change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, stockFilter, itemsPerPage]);
+
+  const totalItems = filteredProducts.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
+      setCurrentPage(newPage);
+      const sectionElem = document.querySelector('.prod-table-container') || document.querySelector('.dashboard-section');
+      if (sectionElem) {
+        sectionElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
+  const inStockCount = Math.max(0, products.length - lowStockCount - outOfStockCount);
+
   return (
     <>
       {/* Alert Notification */}
@@ -131,105 +180,160 @@ const Inventory = () => {
       {/* Page Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
         <div>
-          <h1 className="dashboard-header-title mb-1">
-            Inventory <span>Monitor</span>
+          <div className="prod-header-badge">
+            <i className="bi bi-box-seam"></i> WAREHOUSE & STOCK CONTROLS
+          </div>
+          <h1 className="prod-title mb-1">
+            Inventory <span className="prod-title-highlight">Monitor</span>
           </h1>
-          <p className="dashboard-subtitle mb-0">
-            Real-time stock levels, reorder alerts, and quantity tracking
+          <p className="prod-subtitle mb-0">
+            Real-time stock levels, automated reorder alerts, and warehouse quantity tracking
           </p>
         </div>
-        <button
-          className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1.5 align-self-start align-self-md-auto"
-          onClick={fetchInventory}
-        >
-          <i className="bi bi-arrow-clockwise"></i> Refresh Stock
-        </button>
+        <div className="d-flex align-items-center gap-2">
+          <button
+            className="btn btn-white border d-inline-flex align-items-center gap-2 px-3.5 py-2 shadow-xs fw-semibold"
+            style={{ borderRadius: '10px', backgroundColor: '#ffffff', color: '#334155', fontSize: '13.5px' }}
+            onClick={fetchInventory}
+            disabled={loading}
+            title="Refresh stock levels"
+          >
+            <i className={`bi bi-arrow-clockwise text-primary ${loading ? 'spin' : ''}`}></i> Refresh Stock
+          </button>
+        </div>
       </div>
       
-      {/* Top 3 Stats Cards */}
-      <div className="row g-4 mb-4">
-        {/* Card 1 - Total Stock */}
-        <div className="col-12 col-md-4">
-          <div className="stat-card bg-stat-1" style={{ minHeight: '130px' }}>
-            <div className="stat-card-decor"></div>
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="stat-label mb-0 fw-semibold text-secondary">Total Items in Stock</span>
-              <div className="stat-icon mb-0 text-primary">
+      {/* 4 KPI Metrics Cards */}
+      <div className="row g-3 mb-4">
+        {/* Card 1 - Total Products */}
+        <div className="col-6 col-lg-3">
+          <div className="prod-metric-card prod-metric-total">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="prod-metric-label">Total SKUs</span>
+                <div className="prod-metric-val">{products.length}</div>
+              </div>
+              <div className="prod-metric-icon prod-icon-blue">
+                <i className="bi bi-box-seam-fill"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2 - Total Units in Stock */}
+        <div className="col-6 col-lg-3">
+          <div className="prod-metric-card prod-metric-instock">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="prod-metric-label">Stock Units</span>
+                <div className="prod-metric-val text-success">
+                  {loading ? <span className="spinner-border spinner-border-sm"></span> : totalStock.toLocaleString('en-IN')}
+                </div>
+              </div>
+              <div className="prod-metric-icon prod-icon-green">
                 <i className="bi bi-boxes"></i>
               </div>
             </div>
-            <div className="stat-value text-dark mb-0">
-              {loading ? <span className="spinner-border spinner-border-sm"></span> : totalStock.toLocaleString('en-IN')}
-            </div>
           </div>
         </div>
 
-        {/* Card 2 - Low Stock Alerts */}
-        <div className="col-12 col-md-4">
-          <div className="stat-card bg-stat-2" style={{ minHeight: '130px' }}>
-            <div className="stat-card-decor"></div>
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="stat-label mb-0 fw-semibold text-warning-emphasis">Low Stock Alerts (≤ 5)</span>
-              <div className="stat-icon mb-0 text-warning">
+        {/* Card 3 - Low Stock Alerts */}
+        <div className="col-6 col-lg-3">
+          <div className="prod-metric-card prod-metric-featured">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="prod-metric-label">Low Stock (≤ 5)</span>
+                <div className="prod-metric-val" style={{ color: '#d97706' }}>
+                  {loading ? <span className="spinner-border spinner-border-sm"></span> : lowStockCount}
+                </div>
+              </div>
+              <div className="prod-metric-icon prod-icon-amber">
                 <i className="bi bi-exclamation-diamond-fill"></i>
               </div>
             </div>
-            <div className="stat-value text-warning-emphasis mb-0">
-              {loading ? <span className="spinner-border spinner-border-sm"></span> : lowStockCount}
-            </div>
           </div>
         </div>
 
-        {/* Card 3 - Out of Stock */}
-        <div className="col-12 col-md-4">
-          <div className="stat-card bg-stat-3" style={{ minHeight: '130px' }}>
-            <div className="stat-card-decor"></div>
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="stat-label mb-0 fw-semibold text-danger">Out of Stock Items</span>
-              <div className="stat-icon mb-0 text-danger">
+        {/* Card 4 - Out of Stock */}
+        <div className="col-6 col-lg-3">
+          <div className="prod-metric-card prod-metric-outstock">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="prod-metric-label">Out of Stock</span>
+                <div className="prod-metric-val text-danger">
+                  {loading ? <span className="spinner-border spinner-border-sm"></span> : outOfStockCount}
+                </div>
+              </div>
+              <div className="prod-metric-icon prod-icon-red">
                 <i className="bi bi-x-octagon-fill"></i>
               </div>
-            </div>
-            <div className="stat-value text-danger mb-0">
-              {loading ? <span className="spinner-border spinner-border-sm"></span> : outOfStockCount}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Table Container */}
-      <div className="dashboard-section p-4" style={{ borderRadius: '18px' }}>
-        {/* Filters Header */}
-        <div className="row g-3 align-items-center mb-4 pb-2 border-bottom">
-          <div className="col-12 col-md-8">
-            <div className="position-relative">
+      {/* Filter Card */}
+      <div className="prod-filter-card">
+        <div className="row g-2.5 align-items-center">
+          {/* Search Bar */}
+          <div className="col-12 col-md-6">
+            <div className="prod-search-wrap">
+              <i className="bi bi-search prod-search-icon"></i>
               <input
                 type="text"
-                className="form-control ps-5"
-                placeholder="Search product inventory by name or category..."
+                className="prod-search-input"
+                placeholder="Search inventory by product name or category..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ borderRadius: '10px' }}
               />
-              <i className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+              {searchTerm && (
+                <button
+                  type="button"
+                  className="prod-search-clear"
+                  onClick={() => setSearchTerm('')}
+                  title="Clear search"
+                >
+                  <i className="bi bi-x-lg"></i>
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="col-12 col-md-4">
+          {/* Status Filter */}
+          <div className="col-6 col-md-4">
             <select
-              className="form-select"
+              className="form-select prod-select w-100"
               value={stockFilter}
               onChange={(e) => setStockFilter(e.target.value)}
-              style={{ borderRadius: '10px' }}
             >
-              <option value="all">All Products ({products.length})</option>
-              <option value="in_stock">In Stock ({products.length - lowStockCount - outOfStockCount})</option>
+              <option value="all">All Inventory ({products.length})</option>
+              <option value="in_stock">In Stock ({inStockCount})</option>
               <option value="low_stock">Low Stock Alerts ({lowStockCount})</option>
               <option value="out_of_stock">Out of Stock ({outOfStockCount})</option>
             </select>
           </div>
-        </div>
 
+          {/* Reset Filters */}
+          <div className="col-6 col-md-2 d-flex justify-content-end">
+            {(searchTerm || stockFilter !== 'all') ? (
+              <button
+                type="button"
+                className="btn btn-light border btn-sm w-100 d-inline-flex align-items-center justify-content-center gap-1 py-2 text-secondary fw-semibold"
+                style={{ borderRadius: '10px' }}
+                onClick={() => { setSearchTerm(''); setStockFilter('all'); }}
+              >
+                <i className="bi bi-arrow-counterclockwise"></i> Reset
+              </button>
+            ) : (
+              <div className="text-muted small text-end w-100 pe-1">
+                <span className="fw-semibold text-dark">{filteredProducts.length}</span> SKUs
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="prod-table-container mb-4">
         {/* Inventory Table */}
         <div className="table-responsive">
           <table className="table table-hover align-middle mb-0">
@@ -262,7 +366,7 @@ const Inventory = () => {
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((prod, index) => {
+                paginatedProducts.map((prod, index) => {
                   const qty = Number(prod.stockquantity) || 0;
                   const isOut = qty === 0 || (prod.stockstatus || '').toLowerCase() === 'out of stock';
                   const isLow = qty > 0 && (qty <= 5 || (prod.stockstatus || '').toLowerCase() === 'low stock');
@@ -273,7 +377,7 @@ const Inventory = () => {
                     <tr key={prod._id || index}>
                       {/* S.No */}
                       <td className="text-center text-muted fw-semibold" style={{ fontSize: '13px' }}>
-                        {index + 1}
+                        {startIndex + index + 1}
                       </td>
 
                       {/* Image Thumbnail */}
@@ -367,6 +471,143 @@ const Inventory = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Table Footer with Premium SaaS Pagination */}
+        {!loading && totalItems > 0 && (
+          <div className="prod-table-footer">
+            {/* Left Section: Info & Rows Per Page */}
+            <div className="prod-footer-left">
+              <div className="prod-showing-pill">
+                <i className="bi bi-layers-half text-primary"></i>
+                <span>
+                  Showing <strong className="text-dark">{startIndex + 1}&ndash;{endIndex}</strong> of{' '}
+                  <strong className="text-dark">{totalItems}</strong> products
+                </span>
+                {totalItems !== products.length && (
+                  <span className="prod-filtered-badge">Filtered</span>
+                )}
+              </div>
+
+              <div className="prod-rows-selector">
+                <span className="prod-rows-label">Per page</span>
+                <div className="prod-custom-select-wrap">
+                  <select
+                    id="inventoryPerPageSelect"
+                    className="prod-rows-select"
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <i className="bi bi-chevron-down prod-select-arrow"></i>
+                </div>
+              </div>
+
+              <div className="prod-stat-chips-wrap d-none d-xl-flex">
+                <span className="prod-chip prod-chip-instock">
+                  <span className="prod-chip-indicator bg-success"></span>
+                  {inStockCount} In Stock
+                </span>
+                {lowStockCount > 0 && (
+                  <span className="prod-chip prod-chip-featured">
+                    <span className="prod-chip-indicator bg-warning"></span>
+                    {lowStockCount} Low Stock
+                  </span>
+                )}
+                {outOfStockCount > 0 && (
+                  <span className="prod-chip" style={{ background: '#fff1f2', borderColor: '#fecdd3', color: '#e11d48' }}>
+                    <span className="prod-chip-indicator bg-danger"></span>
+                    {outOfStockCount} Out of Stock
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Right Section: Pagination Nav Controls */}
+            <div className="prod-footer-right">
+              <div className="prod-page-counter-badge d-none d-sm-inline-flex">
+                Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+              </div>
+
+              {totalPages > 1 && (
+                <nav className="prod-pagination-cluster" aria-label="Inventory table pagination">
+                  {/* First Page Button */}
+                  {totalPages > 4 && (
+                    <button
+                      type="button"
+                      className="prod-nav-icon-btn"
+                      disabled={currentPage === 1}
+                      onClick={() => handlePageChange(1)}
+                      title="First page"
+                    >
+                      <i className="bi bi-chevron-bar-left"></i>
+                    </button>
+                  )}
+
+                  {/* Previous Page Button */}
+                  <button
+                    type="button"
+                    className="prod-nav-arrow-btn"
+                    disabled={currentPage === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    title="Previous page"
+                  >
+                    <i className="bi bi-chevron-left"></i>
+                    <span className="d-none d-md-inline">Prev</span>
+                  </button>
+
+                  {/* Segmented Numbers Group */}
+                  <div className="prod-numbers-container">
+                    {getPageNumbers().map((p, idx) =>
+                      p === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="prod-ellipsis-span">
+                          &bull;&bull;&bull;
+                        </span>
+                      ) : (
+                        <button
+                          key={`page-${p}`}
+                          type="button"
+                          className={`prod-num-btn ${currentPage === p ? 'active' : ''}`}
+                          onClick={() => handlePageChange(p)}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  {/* Next Page Button */}
+                  <button
+                    type="button"
+                    className="prod-nav-arrow-btn"
+                    disabled={currentPage === totalPages}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    title="Next page"
+                  >
+                    <span className="d-none d-md-inline">Next</span>
+                    <i className="bi bi-chevron-right"></i>
+                  </button>
+
+                  {/* Last Page Button */}
+                  {totalPages > 4 && (
+                    <button
+                      type="button"
+                      className="prod-nav-icon-btn"
+                      disabled={currentPage === totalPages}
+                      onClick={() => handlePageChange(totalPages)}
+                      title="Last page"
+                    >
+                      <i className="bi bi-chevron-bar-right"></i>
+                    </button>
+                  )}
+                </nav>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* QUICK STOCK UPDATE MODAL */}

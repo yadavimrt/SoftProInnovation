@@ -5,6 +5,7 @@ import { Swiper as SwiperReact, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import { API_BASE_URL } from '../config/api';
 import { formatImg } from '../utils/imageUrl';
+import './CategorySwiper.css';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -24,16 +25,13 @@ import img10 from '../assets/10.png';
 const fallbackImages = [img1, img2, img3, img4, img5, img6, img7, img8, img9, img10];
 
 const fallbackCategories = [
-  { _id: 'c1', category: 'Microcontrollers', image: img1 },
-  { _id: 'c2', category: 'Sensors & Modules', image: img2 },
-  { _id: 'c3', category: 'Displays & LCDs', image: img3 },
-  { _id: 'c4', category: 'Motors & Drivers', image: img4 },
-  { _id: 'c5', category: 'Power Supplies', image: img5 },
-  { _id: 'c6', category: 'Wireless & IoT', image: img6 },
-  { _id: 'c7', category: 'Robotics Kits', image: img7 },
-  { _id: 'c8', category: 'Cables & Headers', image: img8 },
-  { _id: 'c9', category: 'Development Boards', image: img9 },
-  { _id: 'c10', category: 'Accessories', image: img10 },
+  { _id: 'c1', category: 'Microcontrollers & Development Boards', image: img1, productCount: 14 },
+  { _id: 'c2', category: 'Sensor', image: img2, productCount: 14 },
+  { _id: 'c3', category: 'Displays & Indicators', image: img3, productCount: 6 },
+  { _id: 'c4', category: 'Actuators & Motors', image: img4, productCount: 16 },
+  { _id: 'c5', category: 'Power & Battery Components', image: img5, productCount: 12 },
+  { _id: 'c6', category: 'Wireless & Communication Modules', image: img6, productCount: 10 },
+  { _id: 'c7', category: 'IoT KIT', image: img7, productCount: 8 }
 ];
 
 const Swiper = () => {
@@ -48,8 +46,11 @@ const Swiper = () => {
         const res = await axios.get(`${API_BASE_URL}/api/category/show`);
         if (!isMounted) return;
         if (Array.isArray(res.data) && res.data.length > 0) {
+          // Filter active categories that have products or are populated
           const activeCategories = res.data.filter(
-            (cat) => !cat.status || cat.status.toLowerCase() === 'active'
+            (cat) =>
+              (!cat.status || cat.status.toLowerCase() === 'active') &&
+              (cat.productCount === undefined || cat.productCount > 0)
           );
           setCategories(activeCategories.length > 0 ? activeCategories : fallbackCategories);
         } else {
@@ -75,44 +76,64 @@ const Swiper = () => {
     return fallbackImages[index % fallbackImages.length];
   };
 
+  const getCategoryIcon = (name) => {
+    const n = (name || '').toLowerCase().trim();
+    if (n.includes('microcontroller') || n.includes('development board') || n.includes('mcu')) return 'bi-cpu-fill';
+    if (n.includes('sensor')) return 'bi-broadcast-pin';
+    if (n.includes('display') || n.includes('indicator') || n.includes('screen') || n.includes('lcd') || n.includes('oled')) return 'bi-display';
+    if (n.includes('motor') || n.includes('actuator')) return 'bi-gear-wide-connected';
+    if (n.includes('battery') || n.includes('power') || n.includes('supply')) return 'bi-battery-charging';
+    if (n.includes('wireless') || n.includes('communication') || n.includes('bluetooth') || n.includes('wifi') || n.includes('rf')) return 'bi-wifi';
+    if (n.includes('iot') || n.includes('kit') || n.includes('robot')) return 'bi-box-seam-fill';
+    if (n.includes('raspberry') || n.includes('pi')) return 'bi-motherboard-fill';
+    if (n.includes('arduino')) return 'bi-terminal-split';
+    if (n.includes('esp8266') || n.includes('esp32') || n.includes('esp')) return 'bi-router-fill';
+    return 'bi-tag-fill';
+  };
+
   const handleCategoryClick = (catName) => {
     if (catName) {
       navigate(`/product?category=${encodeURIComponent(catName)}`);
     }
   };
 
-  const hasMultiple = categories.length > 5;
+  const hasMultiple = categories.length > 4;
 
   return (
-    <section className="category-swiper-section py-5 bg-white border-bottom border-top">
-      <div className="container">
-        {/* Header with Title and Custom Navigation Arrows */}
-        <div className="d-flex align-items-center justify-content-between mb-4">
+    <section className="category-swiper-section">
+      <div className="container cat-swiper-container">
+        {/* Section Header with Navigation Controls */}
+        <div className="d-flex flex-column flex-md-row align-items-md-end justify-content-between mb-4 pb-2">
           <div>
-            <span className="section-eyebrow d-block mb-1">DISCOVER</span>
-            <h2 className="section-heading mb-0">
-              Popular <span className="highlight-italic">Categories</span>
+            <div className="cat-eyebrow-pill">
+              <span className="cat-pulse-dot"></span>
+              Explore Hardware Taxonomy
+            </div>
+            <h2 className="cat-section-title mb-2">
+              Popular <span className="cat-gradient-title">Categories</span>
             </h2>
-            <div className="section-accent-line mt-2"></div>
+            <p className="cat-section-desc mb-0">
+              Find exactly what your engineering project requires across our curated component collections.
+            </p>
           </div>
 
           {hasMultiple && (
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center gap-2 mt-3 mt-md-0">
               <button
                 type="button"
-                className="cat-nav-btn swiper-cat-prev rounded-circle d-flex align-items-center justify-content-center"
-                style={{ width: '42px', height: '42px', padding: 0 }}
-                aria-label="Previous Slide"
+                className="cat-nav-btn swiper-cat-prev"
+                aria-label="Previous Categories"
+                title="Previous"
               >
-                <i className="bi bi-chevron-left fs-6"></i>
+                <i className="bi bi-chevron-left"></i>
               </button>
               <button
                 type="button"
-                className="cat-nav-btn swiper-cat-next rounded-circle d-flex align-items-center justify-content-center"
-                style={{ width: '42px', height: '42px', padding: 0 }}
-                aria-label="Next Slide"
+                className="cat-nav-btn swiper-cat-next"
+                aria-label="Next Categories"
+                title="Next"
               >
-                <i className="bi bi-chevron-right fs-6"></i>
+                <i className="bi bi-chevron-right"></i>
               </button>
             </div>
           )}
@@ -121,25 +142,26 @@ const Swiper = () => {
         {/* Loading Spinner */}
         {loading ? (
           <div className="d-flex justify-content-center align-items-center py-5">
-            <div className="spinner-border text-primary me-2" role="status"></div>
-            <span className="text-muted fw-medium">Loading categories from admin dashboard...</span>
+            <div className="spinner-border text-primary me-3" role="status"></div>
+            <span className="text-secondary fw-semibold">Loading component categories...</span>
           </div>
         ) : categories.length === 0 ? (
-          <div className="text-center py-5 bg-light rounded-4 border">
+          <div className="text-center py-5 bg-white rounded-4 border">
             <i className="bi bi-folder2-open fs-1 text-muted d-block mb-2"></i>
-            <h6 className="text-muted mb-1">No Categories Added Yet</h6>
+            <h6 className="text-dark fw-bold mb-1">No Categories Found</h6>
             <p className="small text-secondary mb-0">
-              Categories added in the admin dashboard will automatically appear here.
+              Active categories added from the dashboard will appear here.
             </p>
           </div>
         ) : (
+          /* Swiper Carousel */
           <SwiperReact
-            key={`swiper-cat-count-${categories.length}`}
+            key={`cat-swiper-${categories.length}`}
             modules={[Navigation, Autoplay]}
-            spaceBetween={20}
-            slidesPerView={1}
+            spaceBetween={18}
+            slidesPerView={1.2}
             loop={hasMultiple}
-            speed={800}
+            speed={750}
             autoplay={
               categories.length > 3
                 ? {
@@ -160,53 +182,65 @@ const Swiper = () => {
               },
               768: {
                 slidesPerView: Math.min(3, categories.length),
-                spaceBetween: 20,
+                spaceBetween: 18,
               },
               1024: {
+                slidesPerView: Math.min(4, categories.length),
+                spaceBetween: 20,
+              },
+              1280: {
                 slidesPerView: Math.min(5, categories.length),
                 spaceBetween: 22,
               },
             }}
-            className="category-swiper py-2"
+            className="category-swiper"
           >
             {categories.map((cat, index) => {
               const catName = cat.category || cat.name || 'Category';
               const catImg = getCategoryImageUrl(cat, index);
               const productCount = cat.productCount !== undefined ? cat.productCount : 0;
+              const iconClass = getCategoryIcon(catName);
 
               return (
                 <SwiperSlide key={cat._id || cat.id || index}>
                   <div
-                    className="category-card text-center p-4 h-100 cursor-pointer d-flex flex-column align-items-center justify-content-between"
-                    style={{ cursor: 'pointer' }}
+                    className="cat-pro-card w-100"
                     onClick={() => handleCategoryClick(catName)}
-                    title={`View products in ${catName}`}
+                    title={`Explore ${catName}`}
                   >
-                    <div className="category-img-wrapper mb-3 d-flex align-items-center justify-content-center">
+                    {/* Image Showcase Stage */}
+                    <div className="cat-pro-img-box">
+                      {/* Floating Category Icon Badge */}
+                      <span className="cat-pro-icon-badge" title={catName}>
+                        <i className={`bi ${iconClass}`}></i>
+                      </span>
+
+                      {/* Centered Product Image */}
                       <img
                         src={catImg}
                         alt={catName}
-                        className="img-fluid category-img"
+                        className="cat-pro-img"
+                        loading="lazy"
                         onError={(e) => {
                           e.target.onerror = null;
                           e.target.src = fallbackImages[index % fallbackImages.length];
                         }}
                       />
                     </div>
-                    
-                    <div className="w-100">
-                      <h5 className="category-card-title mb-1 text-truncate" title={catName}>
-                        {catName}
-                      </h5>
-                      
-                      <div className="d-flex align-items-center justify-content-center gap-1.5 mt-2">
-                        <span className="category-card-count text-secondary bg-slate-100 border px-2.5 py-0.5 rounded-pill">
-                          {productCount > 0 ? `${productCount}+ Products` : `${productCount} Products`}
-                        </span>
-                        <span className="category-arrow-icon">
-                          <i className="bi bi-arrow-right fs-7"></i>
-                        </span>
-                      </div>
+
+                    {/* Category Title (Clean 2-line display without truncation) */}
+                    <h3 className="cat-pro-title" title={catName}>
+                      {catName}
+                    </h3>
+
+                    {/* Footer Row: Product Count Pill & Interactive Arrow */}
+                    <div className="cat-pro-footer">
+                      <span className="cat-pro-count">
+                        {productCount > 0 ? `${productCount}+ Products` : 'Collection'}
+                      </span>
+                      <span className="cat-pro-arrow">
+                        <i className="bi bi-arrow-right"></i>
+                      </span>
                     </div>
                   </div>
                 </SwiperSlide>

@@ -106,11 +106,6 @@ const DashboardLayout = () => {
             </NavLink>
           </li>
           <li>
-            <NavLink to="/dashboard/addresses" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-              <i className="bi bi-geo-alt"></i> Addresses
-            </NavLink>
-          </li>
-          <li>
             <NavLink to="/dashboard/inventory" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
               <i className="bi bi-list-check"></i> Inventory
             </NavLink>
@@ -120,6 +115,7 @@ const DashboardLayout = () => {
               <i className="bi bi-chat-left-text"></i> Complaints
             </NavLink>
           </li>
+
         </ul>
 
         <div className="sidebar-footer border-top border-secondary border-opacity-25">

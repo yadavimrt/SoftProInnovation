@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../../config/api';
 import { formatImg } from '../../utils/imageUrl';
+import './Products.css';
 
 const isUserActive = (status) => {
   if (status === false || status === 'inactive' || status === 'Inactive' || status === 0) {
@@ -20,6 +21,8 @@ const UsersList = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Modal State for Add / Edit User
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -251,8 +254,53 @@ const UsersList = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Reset page to 1 whenever search, statusFilter, or itemsPerPage change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, itemsPerPage]);
+
+  const totalItems = filteredUsers.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
+      setCurrentPage(newPage);
+      const sectionElem = document.querySelector('.prod-table-container') || document.querySelector('.dashboard-section');
+      if (sectionElem) {
+        sectionElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
   const activeUsersCount = users.filter((u) => isUserActive(u.status)).length;
   const inactiveUsersCount = users.filter((u) => !isUserActive(u.status)).length;
+  const withPhoneCount = users.filter((u) => !!u.mobile).length;
 
   return (
     <>
@@ -270,55 +318,163 @@ const UsersList = () => {
       {/* Header & Add User Button */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
         <div>
-          <h1 className="dashboard-header-title mb-1">
-            User <span>Management</span>
+          <div className="prod-header-badge">
+            <i className="bi bi-shield-lock"></i> USER ACCESS & ACCOUNTS
+          </div>
+          <h1 className="prod-title mb-1">
+            User <span className="prod-title-highlight">Management</span>
           </h1>
-          <p className="dashboard-subtitle mb-0">
-            View, search, edit, manage permissions and registered users
+          <p className="prod-subtitle mb-0">
+            View, search, edit, manage permissions, and track active registered users
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary d-inline-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm align-self-start align-self-md-auto"
-          style={{ backgroundColor: '#3945E0', border: 'none' }}
-          onClick={handleOpenAdd}
-        >
-          <i className="bi bi-person-plus-fill"></i> Add New User
-        </button>
+        <div className="d-flex align-items-center gap-2">
+          <button
+            className="btn btn-white border d-inline-flex align-items-center gap-2 px-3.5 py-2 shadow-xs fw-semibold"
+            style={{ borderRadius: '10px', backgroundColor: '#ffffff', color: '#334155', fontSize: '13.5px' }}
+            onClick={fetchUsers}
+            disabled={loading}
+            title="Refresh users list"
+          >
+            <i className={`bi bi-arrow-clockwise text-primary ${loading ? 'spin' : ''}`}></i> Refresh
+          </button>
+          <button
+            type="button"
+            className="btn d-inline-flex align-items-center gap-2 px-4 py-2 text-white shadow-sm fw-semibold"
+            style={{
+              background: 'linear-gradient(135deg, #3945E0, #2563eb)',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '13.5px',
+              boxShadow: '0 4px 14px rgba(57, 69, 224, 0.28)',
+            }}
+            onClick={handleOpenAdd}
+          >
+            <i className="bi bi-person-plus-fill"></i> Add New User
+          </button>
+        </div>
       </div>
 
-      {/* Users Management Section */}
-      <div className="dashboard-section p-4" style={{ borderRadius: '18px' }}>
-        {/* Search & Filters Header */}
-        <div className="row g-3 align-items-center mb-4 pb-2 border-bottom">
-          <div className="col-12 col-md-8">
-            <div className="position-relative">
+      {/* Metrics Row */}
+      <div className="row g-3 mb-4">
+        <div className="col-6 col-lg-3">
+          <div className="prod-metric-card prod-metric-total">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="prod-metric-label">Total Users</span>
+                <div className="prod-metric-val">{users.length}</div>
+              </div>
+              <div className="prod-metric-icon prod-icon-blue">
+                <i className="bi bi-people-fill"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-6 col-lg-3">
+          <div className="prod-metric-card prod-metric-instock">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="prod-metric-label">Active Users</span>
+                <div className="prod-metric-val text-success">{activeUsersCount}</div>
+              </div>
+              <div className="prod-metric-icon prod-icon-green">
+                <i className="bi bi-person-check-fill"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-6 col-lg-3">
+          <div className="prod-metric-card prod-metric-outstock">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="prod-metric-label">Inactive Users</span>
+                <div className="prod-metric-val text-danger">{inactiveUsersCount}</div>
+              </div>
+              <div className="prod-metric-icon prod-icon-red">
+                <i className="bi bi-person-x-fill"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-6 col-lg-3">
+          <div className="prod-metric-card prod-metric-featured">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="prod-metric-label">Verified Contact</span>
+                <div className="prod-metric-val" style={{ color: '#d97706' }}>{withPhoneCount}</div>
+              </div>
+              <div className="prod-metric-icon prod-icon-amber">
+                <i className="bi bi-shield-check"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Card */}
+      <div className="prod-filter-card">
+        <div className="row g-2.5 align-items-center">
+          {/* Search Bar */}
+          <div className="col-12 col-md-6">
+            <div className="prod-search-wrap">
+              <i className="bi bi-search prod-search-icon"></i>
               <input
                 type="text"
-                className="form-control ps-5"
-                placeholder="Search users by name, email, or mobile number..."
+                className="prod-search-input"
+                placeholder="Search by name, email, or mobile number..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ borderRadius: '10px' }}
               />
-              <i className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+              {searchTerm && (
+                <button
+                  type="button"
+                  className="prod-search-clear"
+                  onClick={() => setSearchTerm('')}
+                  title="Clear search"
+                >
+                  <i className="bi bi-x-lg"></i>
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="col-12 col-md-4">
+          {/* Status Filter */}
+          <div className="col-6 col-md-4">
             <select
-              className="form-select"
+              className="form-select prod-select w-100"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ borderRadius: '10px' }}
             >
-              <option value="all">All Users ({users.length})</option>
-              <option value="active">Active Users ({activeUsersCount})</option>
-              <option value="inactive">Inactive Users ({inactiveUsersCount})</option>
+              <option value="all">All Statuses ({users.length})</option>
+              <option value="active">Active Accounts ({activeUsersCount})</option>
+              <option value="inactive">Inactive Accounts ({inactiveUsersCount})</option>
             </select>
           </div>
-        </div>
 
+          {/* Reset Filters */}
+          <div className="col-6 col-md-2 d-flex justify-content-end">
+            {(searchTerm || statusFilter !== 'all') ? (
+              <button
+                type="button"
+                className="btn btn-light border btn-sm w-100 d-inline-flex align-items-center justify-content-center gap-1 py-2 text-secondary fw-semibold"
+                style={{ borderRadius: '10px' }}
+                onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}
+              >
+                <i className="bi bi-arrow-counterclockwise"></i> Reset
+              </button>
+            ) : (
+              <div className="text-muted small text-end w-100 pe-1">
+                <span className="fw-semibold text-dark">{filteredUsers.length}</span> users
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="prod-table-container mb-4">
         {/* Users Table */}
         <div className="table-responsive">
           <table className="table table-hover align-middle mb-0">
@@ -350,7 +506,7 @@ const UsersList = () => {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user, index) => {
+                paginatedUsers.map((user, index) => {
                   const isActive = isUserActive(user.status);
                   const userName = user.name || 'Unnamed User';
                   const userEmail = user.email || 'No email';
@@ -364,7 +520,7 @@ const UsersList = () => {
                     <tr key={user._id || index}>
                       {/* S.No */}
                       <td className="text-center text-muted fw-semibold" style={{ fontSize: '13px' }}>
-                        {index + 1}
+                        {startIndex + index + 1}
                       </td>
 
                       {/* Name */}
@@ -449,7 +605,7 @@ const UsersList = () => {
                             onClick={() => handleOpenEdit(user)}
                             title="Edit User"
                           >
-                            <i className="bi bi-pencil"></i>
+                            <i className="bi bi-pencil-square"></i>
                           </button>
                           <button
                             type="button"
@@ -468,6 +624,135 @@ const UsersList = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Table Footer with Premium SaaS Pagination */}
+        {!loading && totalItems > 0 && (
+          <div className="prod-table-footer">
+            {/* Left Section: Info & Rows Per Page */}
+            <div className="prod-footer-left">
+              <div className="prod-showing-pill">
+                <i className="bi bi-layers-half text-primary"></i>
+                <span>
+                  Showing <strong className="text-dark">{startIndex + 1}&ndash;{endIndex}</strong> of{' '}
+                  <strong className="text-dark">{totalItems}</strong> users
+                </span>
+                {totalItems !== users.length && (
+                  <span className="prod-filtered-badge">Filtered</span>
+                )}
+              </div>
+
+              <div className="prod-rows-selector">
+                <span className="prod-rows-label">Per page</span>
+                <div className="prod-custom-select-wrap">
+                  <select
+                    id="usersPerPageSelect"
+                    className="prod-rows-select"
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <i className="bi bi-chevron-down prod-select-arrow"></i>
+                </div>
+              </div>
+
+              <div className="prod-stat-chips-wrap d-none d-xl-flex">
+                <span className="prod-chip prod-chip-instock">
+                  <span className="prod-chip-indicator bg-success"></span>
+                  {activeUsersCount} Active
+                </span>
+                <span className="prod-chip prod-chip-featured">
+                  <span className="prod-chip-indicator bg-danger"></span>
+                  {inactiveUsersCount} Inactive
+                </span>
+              </div>
+            </div>
+
+            {/* Right Section: Pagination Nav Controls */}
+            <div className="prod-footer-right">
+              <div className="prod-page-counter-badge d-none d-sm-inline-flex">
+                Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+              </div>
+
+              {totalPages > 1 && (
+                <nav className="prod-pagination-cluster" aria-label="Users table pagination">
+                  {/* First Page Button */}
+                  {totalPages > 4 && (
+                    <button
+                      type="button"
+                      className="prod-nav-icon-btn"
+                      disabled={currentPage === 1}
+                      onClick={() => handlePageChange(1)}
+                      title="First page"
+                    >
+                      <i className="bi bi-chevron-bar-left"></i>
+                    </button>
+                  )}
+
+                  {/* Previous Page Button */}
+                  <button
+                    type="button"
+                    className="prod-nav-arrow-btn"
+                    disabled={currentPage === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    title="Previous page"
+                  >
+                    <i className="bi bi-chevron-left"></i>
+                    <span className="d-none d-md-inline">Prev</span>
+                  </button>
+
+                  {/* Segmented Numbers Group */}
+                  <div className="prod-numbers-container">
+                    {getPageNumbers().map((p, idx) =>
+                      p === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="prod-ellipsis-span">
+                          &bull;&bull;&bull;
+                        </span>
+                      ) : (
+                        <button
+                          key={`page-${p}`}
+                          type="button"
+                          className={`prod-num-btn ${currentPage === p ? 'active' : ''}`}
+                          onClick={() => handlePageChange(p)}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  {/* Next Page Button */}
+                  <button
+                    type="button"
+                    className="prod-nav-arrow-btn"
+                    disabled={currentPage === totalPages}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    title="Next page"
+                  >
+                    <span className="d-none d-md-inline">Next</span>
+                    <i className="bi bi-chevron-right"></i>
+                  </button>
+
+                  {/* Last Page Button */}
+                  {totalPages > 4 && (
+                    <button
+                      type="button"
+                      className="prod-nav-icon-btn"
+                      disabled={currentPage === totalPages}
+                      onClick={() => handlePageChange(totalPages)}
+                      title="Last page"
+                    >
+                      <i className="bi bi-chevron-bar-right"></i>
+                    </button>
+                  )}
+                </nav>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ADD / EDIT USER MODAL */}

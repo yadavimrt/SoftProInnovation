@@ -22,6 +22,7 @@ const ProductDetail = () => {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('description');
 
+
   const imageFrameRef = useRef(null);
 
   // Fetch product and related products
@@ -99,8 +100,6 @@ const ProductDetail = () => {
     (stockQty > 0 && stockStatus.toLowerCase() !== 'out of stock');
 
   const sku = product?.sku || `SP-${(product?._id ? product._id.slice(-6) : 'DEMO').toUpperCase()}`;
-  const rating = product?.rating || '4.8';
-  const reviewsCount = product?.reviews || 16;
   const desc =
     product?.description ||
     product?.shortdescription ||
@@ -148,6 +147,7 @@ const ProductDetail = () => {
   const handleWishlistToggle = () => {
     toggleWishlist(product);
   };
+
 
   if (loading) {
     return (
@@ -306,19 +306,6 @@ const ProductDetail = () => {
                   </span>
                 </div>
 
-                {/* Ratings */}
-                <div className="pd-rating-row">
-                  <div className="pd-stars">
-                    <i className="bi bi-star-fill"></i>
-                    <i className="bi bi-star-fill"></i>
-                    <i className="bi bi-star-fill"></i>
-                    <i className="bi bi-star-fill"></i>
-                    <i className="bi bi-star-fill"></i>
-                  </div>
-                  <span className="pd-review-count">
-                    {rating} ({reviewsCount} verified customer reviews)
-                  </span>
-                </div>
 
                 {/* Price & Savings */}
                 <div className="pd-price-card">

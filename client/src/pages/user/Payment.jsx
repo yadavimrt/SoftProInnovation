@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
@@ -7,19 +7,22 @@ import { useCart } from '../../context/CartContext';
 import { API_BASE_URL } from '../../config/api';
 
 const paymentMethods = [
-  { id: 'recommended', label: 'Recommended for You', icon: 'bi-hand-thumbs-up', disabled: true },
+  { id: 'recommended', label: 'Recommended for You', icon: 'bi-hand-thumbs-up' },
   { id: 'cards', label: 'Cards', icon: 'bi-credit-card' },
-  { id: 'upi', label: 'UPI', icon: 'bi-phone' },
-  { id: 'credit-card', label: 'Credit / Debit / ATM Card', icon: 'bi-credit-card-2-front' },
-  { id: 'cod', label: 'Cash on Delivery', icon: 'bi-cash-stack' },
-  { id: 'gift-card', label: 'Have a Gift Card?', icon: 'bi-gift' },
-  { id: 'emi', label: 'EMI', icon: 'bi-calendar2-week', disabled: true },
+  { id: 'upi', label: 'UPI', icon: 'bi-upc-scan', description: 'Pay by any UPI app' },
+  { id: 'credit-card', label: 'Credit / Debit / ATM Card', icon: 'bi-credit-card-2-front', description: 'Add and secure cards as per RBI guidelines', offer: 'Get upto 5% cashback • 2 offers available' },
+  {
+    id: 'cod',
+    label: 'Cash on Delivery',
+    icon: 'bi-cash-stack',
+  },
 ];
 
 const Payment = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { cartItems, getCartTotal, clearCart } = useCart();
-  const [selectedMethod, setSelectedMethod] = useState('upi');
+  const [selectedMethod, setSelectedMethod] = useState('recommended');
   const [placed, setPlaced] = useState(false);
   const [address, setAddress] = useState(null);
   const [placing, setPlacing] = useState(false);
@@ -30,6 +33,15 @@ const Payment = () => {
   const savings = Math.max(totalMrp - subtotal, 0);
   const fee = 19;
   const total = Math.max(subtotal + fee, 0);
+
+  useEffect(() => {
+    const status = searchParams.get('status');
+    if (status === 'success') {
+      clearCart();
+      setPlaced(true);
+    }
+    if (status === 'failed') setOrderError('PayU payment was not completed. Please try again.');
+  }, [searchParams, clearCart]);
 
   useEffect(() => {
     try {
@@ -54,7 +66,7 @@ const Payment = () => {
     setPlacing(true);
     setOrderError('');
     try {
-      await axios.post(`${API_BASE_URL}/api/order/create`, {
+      const orderPayload = {
         user_id: userId,
         items: cartItems,
         address,
@@ -62,8 +74,24 @@ const Payment = () => {
         fee,
         discount: savings,
         totalAmount: total,
-        paymentMethod: selectedMethod,
-      });
+        paymentMethod: selectedMethod === 'cod' ? 'cod' : 'payu',
+      };
+
+      const { data } = await axios.post(`${API_BASE_URL}/api/order/create`, orderPayload);
+      if (selectedMethod !== 'cod') {
+        const payment = await axios.post(`${API_BASE_URL}/api/order/payu/initiate`, { orderId: data.order.orderId });
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = payment.data.action;
+        Object.entries(payment.data.fields).forEach(([name, value]) => {
+          const input = document.createElement('input');
+          input.type = 'hidden'; input.name = name; input.value = value;
+          form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+        return;
+      }
       clearCart();
       setPlaced(true);
     } catch (error) {
@@ -73,41 +101,33 @@ const Payment = () => {
       setPlacing(false);
     }
   };
-
   const renderMethodContent = () => {
-    if (selectedMethod === 'cod') {
-      return (
-        <div className="payment-method-content">
-          <h5 className="fw-bold mb-2">Cash on Delivery</h5>
-          <p className="text-muted mb-4">Pay securely when your order arrives at your doorstep.</p>
-          <button type="button" className="btn payment-primary-btn w-100" onClick={placeOrder} disabled={placing}>{placing ? 'Placing order...' : 'Place Order'}</button>
-        </div>
-      );
-    }
+  const isCod = selectedMethod === 'cod';
+  return (
+    <div className="payment-method-content">
 
-    if (selectedMethod === 'upi') {
-      return (
-        <div className="payment-method-content">
-          <h5 className="fw-bold mb-2">Pay with UPI</h5>
-          <p className="text-muted mb-3">Pay by any UPI app. Your payment is encrypted and secure.</p>
-          <div className="input-group mb-3">
-            <span className="input-group-text bg-white"><i className="bi bi-phone"></i></span>
-            <input className="form-control" placeholder="Enter UPI ID" aria-label="UPI ID" />
-            <button type="button" className="btn btn-outline-primary">Verify</button>
-          </div>
-          <button type="button" className="btn payment-primary-btn w-100" onClick={placeOrder} disabled={placing}>{placing ? 'Saving order...' : `Pay ₹${total.toLocaleString('en-IN')}`}</button>
-        </div>
-      );
-    }
+      <h5 className="fw-bold mb-2">
+        {isCod ? 'Cash on Delivery' : 'Pay securely with PayU'}
+      </h5>
 
-    return (
-      <div className="payment-method-content">
-        <h5 className="fw-bold mb-2">{paymentMethods.find((method) => method.id === selectedMethod)?.label}</h5>
-        <p className="text-muted mb-4">Add your payment details securely on the next step.</p>
-        <button type="button" className="btn payment-primary-btn w-100" onClick={placeOrder} disabled={placing}>{placing ? 'Saving order...' : 'Continue securely'}</button>
-      </div>
-    );
-  };
+      <p className="text-muted mb-4">
+        {isCod ? 'Pay securely when your order arrives at your doorstep.' : 'Cards, UPI and net banking are available through PayU secure checkout.'}
+      </p>
+
+      <button
+        type="button"
+        className="btn payment-primary-btn w-100"
+        onClick={placeOrder}
+        disabled={placing}
+      >
+        {placing
+          ? 'Placing order...'
+          : isCod ? 'Place Order' : 'Pay Now'}
+      </button>
+
+    </div>
+  );
+};
 
   if (placed) {
     return (
@@ -150,9 +170,8 @@ const Payment = () => {
                 >
                   <i className={`bi ${method.icon}`}></i>
                   <span>{method.label}</span>
-                  {method.id === 'upi' && <small>Pay by any UPI app</small>}
-                  {method.id === 'credit-card' && <small>Add and secure cards as per RBI guidelines</small>}
-                  {method.id === 'emi' && <strong>Unavailable <i className="bi bi-question-circle ms-1"></i></strong>}
+                  {method.description && <small>{method.description}</small>}
+                  {method.offer && <strong>{method.offer}</strong>}
                 </button>
               ))}
             </div>

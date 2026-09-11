@@ -56,8 +56,6 @@ const QuickViewModal = ({ product, onClose }) => {
     (stockQty > 0 && stockStatus.toLowerCase() !== 'out of stock');
 
   const sku = product?.sku || `SP-${(product?._id ? product._id.slice(-6) : 'DEMO').toUpperCase()}`;
-  const rating = product?.rating || '4.8';
-  const reviewsCount = product?.reviews || 16;
   const desc =
     product?.shortdescription ||
     product?.description ||
@@ -254,19 +252,6 @@ const QuickViewModal = ({ product, onClose }) => {
                     </span>
                   </div>
 
-                  {/* Ratings */}
-                  <div className="qv-reviews-row">
-                    <div className="qv-star-icons">
-                      <i className="bi bi-star-fill"></i>
-                      <i className="bi bi-star-fill"></i>
-                      <i className="bi bi-star-fill"></i>
-                      <i className="bi bi-star-fill"></i>
-                      <i className="bi bi-star-fill"></i>
-                    </div>
-                    <span className="qv-reviews-count">
-                      {rating} ({reviewsCount} reviews)
-                    </span>
-                  </div>
 
                   {/* Price & Savings */}
                   <div className="qv-pricing-row">

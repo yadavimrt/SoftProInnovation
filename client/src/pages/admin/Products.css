@@ -583,14 +583,314 @@
   box-shadow: 0 4px 10px rgba(225, 29, 72, 0.3);
 }
 
-/* Table Footer / Counter */
+/* ========================================================
+   PREMIUM SAAS PAGINATION FOOTER
+   ======================================================== */
 .prod-table-footer {
-  padding: 12px 20px;
-  background: #f8fafc;
-  border-top: 1px solid var(--prod-border-subtle);
+  padding: 16px 24px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-top: 1px solid #e2e8f0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12.5px;
-  color: var(--prod-text-muted);
+  flex-wrap: wrap;
+  gap: 16px;
 }
+
+.prod-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* Showing Range Pill */
+.prod-showing-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.prod-showing-pill strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.prod-filtered-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #eff6ff;
+  color: #2563eb;
+  padding: 2px 7px;
+  border-radius: 20px;
+  border: 1px solid #bfdbfe;
+}
+
+/* Rows Selector */
+.prod-rows-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prod-rows-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.prod-custom-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.prod-rows-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 5px 30px 5px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.prod-rows-select:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.prod-rows-select:focus {
+  border-color: #3945E0;
+  box-shadow: 0 0 0 3.5px rgba(57, 69, 224, 0.14);
+}
+
+.prod-select-arrow {
+  position: absolute;
+  right: 10px;
+  font-size: 10px;
+  color: #64748b;
+  pointer-events: none;
+  transition: transform 0.2s ease;
+}
+
+/* Stats Chips */
+.prod-stat-chips-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+  padding-left: 12px;
+  border-left: 1px solid #e2e8f0;
+}
+
+.prod-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3.5px 10px;
+  border-radius: 20px;
+}
+
+.prod-chip-instock {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.prod-chip-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+}
+
+.prod-chip-featured {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+/* Right Section Controls */
+.prod-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.prod-page-counter-badge {
+  font-size: 12.5px;
+  color: #64748b;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 5px 12px;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.prod-page-counter-badge strong {
+  color: #0f172a;
+}
+
+/* Pagination Cluster Nav */
+.prod-pagination-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Prev / Next Action Buttons */
+.prod-nav-arrow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 13px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.prod-nav-arrow-btn:hover:not(:disabled) {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
+}
+
+.prod-nav-arrow-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.prod-nav-arrow-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #f8fafc;
+  border-color: #f1f5f9;
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+/* First / Last Quick Jump Buttons */
+.prod-nav-icon-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #475569;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.prod-nav-icon-btn:hover:not(:disabled) {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
+}
+
+.prod-nav-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #f8fafc;
+  border-color: #f1f5f9;
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+/* Page Numbers Segmented Container */
+.prod-numbers-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Individual Number Button */
+.prod-num-btn {
+  min-width: 32px;
+  height: 30px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.prod-num-btn:hover:not(.active) {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.prod-num-btn.active {
+  background: linear-gradient(135deg, #3945E0 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.35);
+  cursor: default;
+  transform: scale(1.02);
+}
+
+/* Ellipsis Dot Spacer */
+.prod-ellipsis-span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 30px;
+  color: #94a3b8;
+  font-size: 9px;
+  letter-spacing: 1px;
+  user-select: none;
+}
+
+

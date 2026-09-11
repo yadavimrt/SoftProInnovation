@@ -1,5 +1,5 @@
 server/.env
-server/uploads/*
+uploads/*
 client/node_modules/
 server/node_modules/
 client/dist/

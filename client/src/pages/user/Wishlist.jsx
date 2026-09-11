@@ -25,7 +25,7 @@ const Wishlist = () => {
           <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between mb-4 border-bottom pb-3">
             <div>
               <h2 className="fw-bold text-dark mb-1">
-                My <span style={{ color: '#ff4500' }}>Wishlist</span>
+                My <span style={{ color: '#2563eb' }}>Wishlist</span>
               </h2>
               <p className="text-muted small mb-0">
                 Manage your saved products and move them to cart anytime.
@@ -72,8 +72,8 @@ const Wishlist = () => {
               </p>
               <Link
                 to="/Product"
-                className="btn btn-orangered px-4 py-2 rounded-3 fw-semibold text-white text-decoration-none mx-auto"
-                style={{ backgroundColor: '#ff4500', width: 'fit-content' }}
+                className="btn btn-primary px-4 py-2 rounded-3 fw-semibold text-white text-decoration-none mx-auto"
+                style={{ backgroundColor: '#1d4ed8', borderColor: '#1d4ed8', width: 'fit-content' }}
               >
                 <i className="bi bi-grid me-2"></i> Explore Products
               </Link>
@@ -161,7 +161,7 @@ const Wishlist = () => {
 
                         {/* Price */}
                         <div className="mt-auto d-flex align-items-baseline gap-2 mb-3">
-                          <span className="fw-bold fs-5" style={{ color: '#ff4500' }}>
+                          <span className="fw-bold fs-5" style={{ color: '#1d4ed8' }}>
                             ₹{price.toLocaleString('en-IN')}
                           </span>
                           {comparePrice > price && (

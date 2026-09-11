@@ -14,6 +14,7 @@ import Categories from './pages/admin/Categories'
 import AddCategory from './pages/admin/AddCategory'
 import Products from './pages/admin/Products'
 import Orders from './pages/admin/Orders'
+import OrderDetail from './pages/admin/OrderDetail'
 import UsersList from './pages/admin/UsersList'
 import Inventory from './pages/admin/Inventory'
 import Complaints from './pages/admin/Complaints'
@@ -24,9 +25,9 @@ import AdminProtectedRoute from './components/AdminProtectedRoute'
 import AddProduct from './pages/admin/AddProduct'
 
 import Addresses from './pages/user/Addresses'
-import AdminAddresses from './pages/admin/Addresses'
 import Profile from './pages/user/Profile'
 import Payment from './pages/user/Payment'
+import OrderSuccess from './pages/user/OrderSuccess'
 
 export const App = () => {
   return (
@@ -42,6 +43,7 @@ export const App = () => {
           <Route path='/wishlist' element={<Wishlist />}></Route>
           <Route path='/addresses' element={<Addresses />}></Route>
           <Route path='/payment' element={<Payment />}></Route>
+          <Route path='/order-success' element={<OrderSuccess />}></Route>
           <Route path='/profile' element={<Profile />}></Route>
           <Route path='/account' element={<Profile />}></Route>
           <Route path='/login' element={<Login />}></Route>
@@ -64,8 +66,8 @@ export const App = () => {
             <Route path='add-product' element={<AddProduct />} />
             <Route path='products/edit/:id' element={<AddProduct isEditMode={true} />} />
             <Route path='orders' element={<Orders />} />
+            <Route path='orders/:id' element={<OrderDetail />} />
             <Route path='users' element={<UsersList />} />
-            <Route path='addresses' element={<AdminAddresses />} />
             <Route path='inventory' element={<Inventory />} />
             <Route path='complaints' element={<Complaints />} />
           </Route>

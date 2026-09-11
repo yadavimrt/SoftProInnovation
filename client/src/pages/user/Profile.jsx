@@ -34,6 +34,11 @@ const Profile = () => {
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersPerPage, setOrdersPerPage] = useState(2);
+  const [ordersSearch, setOrdersSearch] = useState('');
+  const [ordersStatusFilter, setOrdersStatusFilter] = useState('all');
+  const [trackingOrder, setTrackingOrder] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState(null);
   const [addressSubmitLoading, setAddressSubmitLoading] = useState(false);
@@ -55,7 +60,7 @@ const Profile = () => {
 
   // Page active tab & status
   const tabParam = searchParams.get('tab');
-  const validTab = tabParam && ['profile', 'orders', 'addresses', 'reviews', 'wishlist'].includes(tabParam) ? tabParam : null;
+  const validTab = tabParam && ['profile', 'orders', 'addresses', 'wishlist'].includes(tabParam) ? tabParam : null;
   const [activeTab, setActiveTab] = useState(validTab || 'profile');
   const [prevTabParam, setPrevTabParam] = useState(validTab);
   if (validTab !== prevTabParam) {
@@ -127,6 +132,7 @@ const Profile = () => {
       setOrdersLoading(false);
     }
   };
+
 
 
   useEffect(() => {
@@ -206,6 +212,50 @@ const Profile = () => {
     const userId = user?._id || user?.id;
     if (activeTab === 'orders' && userId) fetchUserOrders(userId);
   }, [activeTab, user?._id, user?.id]);
+
+  // Filter & Paginate User Orders
+  const filteredUserOrders = orders.filter((order) => {
+    const term = ordersSearch.toLowerCase().trim();
+    const orderId = (order.orderId || order._id || '').toLowerCase();
+    const itemNames = (order.items || []).map((i) => i.name || '').join(' ').toLowerCase();
+    const matchesSearch = !term || orderId.includes(term) || itemNames.includes(term);
+    const matchesStatus = ordersStatusFilter === 'all' || (order.status || '').toLowerCase() === ordersStatusFilter.toLowerCase();
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalUserOrders = filteredUserOrders.length;
+  const totalUserOrderPages = Math.max(1, Math.ceil(totalUserOrders / ordersPerPage));
+  const startUserOrderIndex = (ordersPage - 1) * ordersPerPage;
+  const endUserOrderIndex = Math.min(startUserOrderIndex + ordersPerPage, totalUserOrders);
+  const paginatedUserOrders = filteredUserOrders.slice(startUserOrderIndex, endUserOrderIndex);
+
+  useEffect(() => {
+    setOrdersPage(1);
+  }, [ordersSearch, ordersStatusFilter, ordersPerPage]);
+
+  const getUserOrderPageNumbers = () => {
+    const pages = [];
+    if (totalUserOrderPages <= 7) {
+      for (let i = 1; i <= totalUserOrderPages; i++) pages.push(i);
+    } else {
+      if (ordersPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalUserOrderPages);
+      } else if (ordersPage >= totalUserOrderPages - 3) {
+        pages.push(1, '...', totalUserOrderPages - 4, totalUserOrderPages - 3, totalUserOrderPages - 2, totalUserOrderPages - 1, totalUserOrderPages);
+      } else {
+        pages.push(1, '...', ordersPage - 1, ordersPage, ordersPage + 1, '...', totalUserOrderPages);
+      }
+    }
+    return pages;
+  };
+
+  const handleUserOrderPageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalUserOrderPages && newPage !== ordersPage) {
+      setOrdersPage(newPage);
+      const elem = document.getElementById('userOrdersSection');
+      if (elem) elem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
@@ -617,14 +667,6 @@ const Profile = () => {
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  className={`profile-nav-item ${activeTab === 'reviews' ? 'active' : ''}`}
-                  onClick={() => changeTab('reviews')}
-                >
-                  <i className="bi bi-star"></i>
-                  <span>My Reviews</span>
-                </button>
 
                 <Link
                   to="/wishlist"
@@ -920,66 +962,341 @@ const Profile = () => {
 
             {/* TAB: My Orders */}
             {activeTab === 'orders' && (
-              <div className="profile-content-card">
-                <h2 className="profile-card-title">My Orders</h2>
+              <div className="profile-content-card" id="userOrdersSection">
+                <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center pb-2 mb-3 border-bottom gap-2">
+                  <h2 className="profile-card-title mb-0 border-0 p-0">My Orders</h2>
+                  <span className="badge bg-primary-subtle text-primary fw-semibold px-3 py-1.5 rounded-pill" style={{ fontSize: '12px' }}>
+                    {orders.length} Total Orders
+                  </span>
+                </div>
+
+                {orders.length > 0 && (
+                  <div className="row g-2 mb-3 align-items-center">
+                    <div className="col-12 col-md-5">
+                      <div className="position-relative">
+                        <i className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style={{ fontSize: '13px' }}></i>
+                        <input
+                          type="text"
+                          className="form-control form-control-sm ps-5"
+                          placeholder="Search orders by order ID or item..."
+                          value={ordersSearch}
+                          onChange={(e) => setOrdersSearch(e.target.value)}
+                          style={{ borderRadius: '8px', fontSize: '13px', height: '36px' }}
+                        />
+                        {ordersSearch && (
+                          <button
+                            type="button"
+                            className="btn btn-link btn-sm position-absolute top-50 end-0 translate-middle-y me-2 p-0 text-muted"
+                            onClick={() => setOrdersSearch('')}
+                          >
+                            <i className="bi bi-x"></i>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="col-6 col-md-4">
+                      <select
+                        className="form-select form-select-sm"
+                        value={ordersStatusFilter}
+                        onChange={(e) => setOrdersStatusFilter(e.target.value)}
+                        style={{ borderRadius: '8px', fontSize: '13px', height: '36px' }}
+                      >
+                        <option value="all">All Orders ({orders.length})</option>
+                        <option value="pending">Pending</option>
+                        <option value="processing">Processing</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <select
+                        className="form-select form-select-sm"
+                        value={ordersPerPage}
+                        onChange={(e) => setOrdersPerPage(Number(e.target.value))}
+                        style={{ borderRadius: '8px', fontSize: '13px', height: '36px' }}
+                        title="Orders per page"
+                      >
+                        <option value={1}>1 / page</option>
+                        <option value={2}>2 / page</option>
+                        <option value={5}>5 / page</option>
+                        <option value={10}>10 / page</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
                 {ordersLoading ? (
                   <div className="text-center py-5"><span className="spinner-border text-primary"></span></div>
-                ) : orders.length > 0 ? (
-                  <div className="d-flex flex-column gap-3">
-                    {orders.map((order) => (
-                      <div key={order._id} className="border rounded-3 p-3 bg-white shadow-sm">
-                        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom pb-3 mb-3">
-                          <div><strong>Order {order.orderId}</strong><div className="small text-muted">{new Date(order.createdAt).toLocaleDateString('en-IN')}</div></div>
-                          <span className="badge bg-warning-subtle text-warning-emphasis text-capitalize">{order.status || 'pending'}</span>
-                          <strong className="text-dark">₹{Number(order.totalAmount || 0).toLocaleString('en-IN')}</strong>
-                        </div>
-                        <div className="d-flex flex-column gap-2">
-                          {(order.items || []).map((item, itemIndex) => (
-                            <div key={`${order._id}-${itemIndex}`} className="d-flex align-items-center gap-3">
-                              <div className="border rounded-2 d-flex align-items-center justify-content-center bg-light" style={{ width: 52, height: 52 }}><img src={formatImg(item.thumbnail)} alt={item.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /></div>
-                              <div className="flex-grow-1"><strong className="d-block">{item.name}</strong><small className="text-muted">Qty: {item.quantity}</small></div>
-                              <strong>₹{Number(item.total || 0).toLocaleString('en-IN')}</strong>
+                ) : filteredUserOrders.length > 0 ? (
+                  <>
+                    <div className="d-flex flex-column gap-3">
+                      {paginatedUserOrders.map((order) => {
+                        const status = (order.status || 'pending').toLowerCase();
+                        const paymentStatus = (order.paymentStatus || 'pending').toLowerCase();
+                        const paymentMethod = (order.paymentMethod || 'COD').toUpperCase();
+                        const milestoneSteps = ['pending', 'processing', 'shipped', 'delivered'];
+                        const currentIndex = milestoneSteps.indexOf(status);
+                        const isCancelled = status === 'cancelled';
+                        const progressPercent = currentIndex >= 0 ? (currentIndex / 3) * 100 : 0;
+                        const orderDate = new Date(order.createdAt).toLocaleString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        });
+                        const totalAmt = Number(order.totalAmount || 0).toLocaleString('en-IN');
+
+                        let statusMessage = 'Your order has been placed and is awaiting confirmation.';
+                        if (status === 'processing') statusMessage = 'Your order is confirmed and being carefully prepared & packed.';
+                        if (status === 'shipped') statusMessage = `Your package is shipped and in transit to ${order.address?.city || 'your delivery address'}!`;
+                        if (status === 'delivered') statusMessage = `Delivered successfully to ${order.address?.name || 'you'}. Thank you for shopping with us!`;
+                        if (isCancelled) statusMessage = 'This order was cancelled.';
+
+                        return (
+                          <div key={order._id} className="user-order-card">
+                            {/* Order Card Header */}
+                            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom pb-3 mb-3">
+                              <div>
+                                <div className="d-flex align-items-center gap-2">
+                                  <strong className="text-dark fs-6">
+                                    Order {order.orderId || `#ORD-${order._id.slice(-6).toUpperCase()}`}
+                                  </strong>
+                                </div>
+                                <div className="small text-muted mt-0.5">
+                                  <i className="bi bi-clock me-1"></i> Placed on {orderDate}
+                                </div>
+                              </div>
+
+                              <div className="d-flex flex-wrap align-items-center gap-2">
+                                {/* Live Order Status Badge */}
+                                <span className={`badge rounded-pill px-3 py-1.5 fw-semibold text-uppercase status-pill-${status}`} style={{ fontSize: '11.5px' }}>
+                                  {status === 'pending' && <i className="bi bi-hourglass-split me-1"></i>}
+                                  {status === 'processing' && <i className="bi bi-box-seam me-1"></i>}
+                                  {status === 'shipped' && <i className="bi bi-truck me-1"></i>}
+                                  {status === 'delivered' && <i className="bi bi-check-circle-fill me-1"></i>}
+                                  {status === 'cancelled' && <i className="bi bi-x-circle-fill me-1"></i>}
+                                  {status}
+                                </span>
+
+                                {/* Payment Status Badge */}
+                                <span className={`badge rounded-pill px-2.5 py-1.5 fw-semibold text-uppercase status-pill-${paymentStatus === 'paid' ? 'paid' : 'pending'}`} style={{ fontSize: '11px' }}>
+                                  <i className="bi bi-credit-card-2-front me-1"></i>
+                                  {paymentStatus === 'paid' ? `Paid (${paymentMethod})` : `Payment ${paymentStatus} (${paymentMethod})`}
+                                </span>
+
+                                <strong className="text-dark fs-5 ms-1">₹{totalAmt}</strong>
+                              </div>
                             </div>
-                          ))}
+
+                            {/* Live Visual Milestone Stepper */}
+                            <div className="user-order-stepper-box">
+                              {isCancelled ? (
+                                <div className="text-center py-1 text-danger fw-semibold small">
+                                  <i className="bi bi-x-circle me-1"></i> Order Cancelled
+                                </div>
+                              ) : (
+                                <div className="user-stepper-track">
+                                  <div className="user-stepper-line">
+                                    <div className="user-stepper-line-fill" style={{ width: `${progressPercent}%` }}></div>
+                                  </div>
+
+                                  {[
+                                    { key: 'pending', label: 'Placed', icon: 'bi-bag-check' },
+                                    { key: 'processing', label: 'Processing', icon: 'bi-box-seam' },
+                                    { key: 'shipped', label: 'Shipped', icon: 'bi-truck' },
+                                    { key: 'delivered', label: 'Delivered', icon: 'bi-check-circle' }
+                                  ].map((step, idx) => {
+                                    const isDone = currentIndex > idx;
+                                    const isCurrent = currentIndex === idx;
+                                    const itemClass = isDone ? 'completed' : isCurrent ? 'active' : '';
+
+                                    return (
+                                      <div key={step.key} className={`user-step-item ${itemClass}`}>
+                                        <div className="user-step-icon-circle">
+                                          {isDone ? <i className="bi bi-check-lg"></i> : <i className={`bi ${step.icon}`}></i>}
+                                        </div>
+                                        <div className="user-step-title">{step.label}</div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {/* Status explanation message banner */}
+                              <div className={`user-order-status-banner banner-${status}`}>
+                                <i className={`bi ${status === 'delivered' ? 'bi-check-circle-fill fs-5' : status === 'shipped' ? 'bi-truck fs-5' : status === 'cancelled' ? 'bi-x-circle-fill fs-5' : 'bi-info-circle-fill fs-5'}`}></i>
+                                <span>{statusMessage}</span>
+                              </div>
+                            </div>
+
+                            {/* Ordered Items List Preview */}
+                            <div className="d-flex flex-column gap-2 mb-3">
+                              {(order.items || []).map((item, itemIndex) => (
+                                <div key={`${order._id}-${itemIndex}`} className="d-flex align-items-center gap-3 p-2 rounded-2 bg-light-subtle border">
+                                  <div className="border rounded-2 d-flex align-items-center justify-content-center bg-white flex-shrink-0" style={{ width: 50, height: 50 }}>
+                                    <img
+                                      src={formatImg(item.thumbnail)}
+                                      alt={item.name}
+                                      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                      onError={(e) => { e.target.src = 'https://placehold.co/100x100?text=Product'; }}
+                                    />
+                                  </div>
+                                  <div className="flex-grow-1">
+                                    <strong className="d-block text-dark small">{item.name}</strong>
+                                    <div className="d-flex align-items-center gap-2 small text-muted">
+                                      <span>Qty: <strong>{item.quantity}</strong></span>
+                                      {item.category && <span>&bull; {item.category}</span>}
+                                    </div>
+                                  </div>
+                                  <strong className="small text-dark">
+                                    ₹{Number(item.total || (item.price * item.quantity) || 0).toLocaleString('en-IN')}
+                                  </strong>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Card Footer: Address info & Track Details Button */}
+                            <div className="d-flex flex-wrap align-items-center justify-content-between pt-2 border-top gap-2">
+                              <div className="small text-muted">
+                                {order.address ? (
+                                  <span>
+                                    <i className="bi bi-geo-alt-fill text-primary me-1"></i>
+                                    Deliver to: <strong className="text-dark">{order.address.name}</strong> ({order.address.city}, {order.address.state} - {order.address.pincode})
+                                  </span>
+                                ) : (
+                                  <span>
+                                    <i className="bi bi-box2 text-primary me-1"></i>
+                                    {order.items?.length || 1} product(s) ordered
+                                  </span>
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary rounded-pill px-3.5 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5"
+                                style={{ backgroundColor: '#3945E0', border: 'none' }}
+                                onClick={() => setTrackingOrder(order)}
+                              >
+                                <i className="bi bi-radar"></i>
+                                <span>Track & View Details</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Pagination Footer */}
+                    <div className="d-flex flex-wrap align-items-center justify-content-between pt-3 mt-4 border-top gap-3">
+                      <div className="d-flex flex-wrap align-items-center gap-2 small text-muted">
+                        <span>
+                          Showing <strong>{startUserOrderIndex + 1}&ndash;{endUserOrderIndex}</strong> of <strong>{totalUserOrders}</strong> orders
+                        </span>
+                        <span className="text-secondary">&bull;</span>
+                        <span>
+                          Page <strong>{ordersPage}</strong> of <strong>{totalUserOrderPages}</strong>
+                        </span>
+                        <div className="d-inline-flex align-items-center gap-1 ms-sm-2">
+                          <span className="text-muted">Per page:</span>
+                          <select
+                            className="form-select form-select-sm py-0 px-2 shadow-none"
+                            style={{ width: 'auto', fontSize: '12px', height: '28px', borderRadius: '6px' }}
+                            value={ordersPerPage}
+                            onChange={(e) => setOrdersPerPage(Number(e.target.value))}
+                          >
+                            <option value={1}>1</option>
+                            <option value={2}>2</option>
+                            <option value={5}>5</option>
+                            <option value={10}>10</option>
+                          </select>
                         </div>
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="d-flex align-items-center gap-1">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary px-2.5 py-1 rounded-2 fw-medium"
+                          disabled={ordersPage === 1}
+                          onClick={() => handleUserOrderPageChange(ordersPage - 1)}
+                          style={{ fontSize: '12px' }}
+                          title="Previous Page"
+                        >
+                          <i className="bi bi-chevron-left me-1"></i> Prev
+                        </button>
+
+                        {getUserOrderPageNumbers().map((p, idx) => {
+                          if (p === '...') {
+                            return (
+                              <span key={`ellipsis-${idx}`} className="px-2 text-muted small user-select-none">
+                                &hellip;
+                              </span>
+                            );
+                          }
+                          const isActive = ordersPage === p;
+                          return (
+                            <button
+                              key={`user-order-page-${p}`}
+                              type="button"
+                              className={`btn btn-sm px-2.5 py-1 rounded-2 fw-semibold ${
+                                isActive ? 'btn-primary text-white shadow-sm' : 'btn-outline-light text-dark border'
+                              }`}
+                              onClick={() => handleUserOrderPageChange(p)}
+                              style={{
+                                fontSize: '12px',
+                                minWidth: '32px',
+                                backgroundColor: isActive ? '#3945E0' : undefined,
+                                borderColor: isActive ? '#3945E0' : undefined
+                              }}
+                            >
+                              {p}
+                            </button>
+                          );
+                        })}
+
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary px-2.5 py-1 rounded-2 fw-medium"
+                          disabled={ordersPage >= totalUserOrderPages}
+                          onClick={() => handleUserOrderPageChange(ordersPage + 1)}
+                          style={{ fontSize: '12px' }}
+                          title="Next Page"
+                        >
+                          Next <i className="bi bi-chevron-right ms-1"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-5">
-                  <div className="mb-3">
-                    <i className="bi bi-bag-x text-muted" style={{ fontSize: '3.5rem' }}></i>
-                  </div>
-                  <h5 className="fw-bold text-dark">No orders found</h5>
-                  <p className="text-muted mb-4" style={{ maxWidth: '400px', margin: '0 auto' }}>
-                    You haven't placed any orders yet. Explore our premier collection and find what you need!
-                  </p>
-                  <Link to="/Product" className="btn btn-primary px-4 py-2 rounded-pill fw-semibold shadow-sm">
-                    Browse Products
-                  </Link>
+                    <div className="mb-3">
+                      <i className="bi bi-bag-x text-muted" style={{ fontSize: '3.5rem' }}></i>
+                    </div>
+                    <h5 className="fw-bold text-dark">{ordersSearch || ordersStatusFilter !== 'all' ? 'No matching orders found' : 'No orders found'}</h5>
+                    <p className="text-muted mb-4" style={{ maxWidth: '400px', margin: '0 auto' }}>
+                      {ordersSearch || ordersStatusFilter !== 'all'
+                        ? 'Try clearing your search or status filter to see all your orders.'
+                        : "You haven't placed any orders yet. Explore our premier collection and find what you need!"}
+                    </p>
+                    {ordersSearch || ordersStatusFilter !== 'all' ? (
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary px-4 py-2 rounded-pill fw-semibold shadow-sm"
+                        onClick={() => { setOrdersSearch(''); setOrdersStatusFilter('all'); }}
+                      >
+                        Clear Filters
+                      </button>
+                    ) : (
+                      <Link to="/Product" className="btn btn-primary px-4 py-2 rounded-pill fw-semibold shadow-sm">
+                        Browse Products
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {/* TAB: My Reviews */}
-            {activeTab === 'reviews' && (
-              <div className="profile-content-card">
-                <h2 className="profile-card-title">My Reviews</h2>
-                <div className="text-center py-5">
-                  <div className="mb-3">
-                    <i className="bi bi-star text-muted" style={{ fontSize: '3.5rem' }}></i>
-                  </div>
-                  <h5 className="fw-bold text-dark">No reviews yet</h5>
-                  <p className="text-muted mb-4" style={{ maxWidth: '400px', margin: '0 auto' }}>
-                    Share your experience by writing reviews on products you've purchased!
-                  </p>
-                  <Link to="/Product" className="btn btn-primary px-4 py-2 rounded-pill fw-semibold shadow-sm">
-                    Explore Products to Review
-                  </Link>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </main>
@@ -1146,6 +1463,249 @@ const Profile = () => {
                     {deletingId !== null ? 'Deleting...' : 'Yes, Delete'}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Order Tracking & Full Details Modal */}
+      {trackingOrder && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', zIndex: 1075 }} tabIndex="-1" role="dialog">
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+              {/* Modal Header */}
+              <div className="modal-header bg-primary text-white border-0 px-4 py-3">
+                <div>
+                  <div className="d-flex align-items-center gap-2">
+                    <h5 className="modal-title fw-bold mb-0">
+                      Order {trackingOrder.orderId || `#ORD-${trackingOrder._id.slice(-6).toUpperCase()}`}
+                    </h5>
+                    <span className="badge bg-white text-primary rounded-pill px-2.5 py-1 text-uppercase fw-bold" style={{ fontSize: '11px' }}>
+                      {trackingOrder.status || 'Pending'}
+                    </span>
+                  </div>
+                  <small className="text-white-50">
+                    Placed on {new Date(trackingOrder.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </small>
+                </div>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setTrackingOrder(null)} aria-label="Close"></button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="modal-body p-4" style={{ maxHeight: '78vh', overflowY: 'auto' }}>
+                {/* 1. Large Milestone Stepper */}
+                {trackingOrder.status === 'cancelled' ? (
+                  <div className="alert alert-danger rounded-3 py-2.5 text-center mb-4">
+                    <i className="bi bi-x-circle-fill me-2 fs-5"></i>
+                    <strong>This order has been cancelled.</strong>
+                  </div>
+                ) : (
+                  <div className="bg-light rounded-3 p-3 mb-4 border">
+                    <div className="user-stepper-track py-2">
+                      <div className="user-stepper-line">
+                        <div
+                          className="user-stepper-line-fill"
+                          style={{
+                            width: `${
+                              ['pending', 'processing', 'shipped', 'delivered'].indexOf((trackingOrder.status || 'pending').toLowerCase()) >= 0
+                                ? (['pending', 'processing', 'shipped', 'delivered'].indexOf((trackingOrder.status || 'pending').toLowerCase()) / 3) * 100
+                                : 0
+                            }%`
+                          }}
+                        ></div>
+                      </div>
+
+                      {[
+                        { key: 'pending', label: 'Order Placed', icon: 'bi-bag-check' },
+                        { key: 'processing', label: 'Processing', icon: 'bi-box-seam' },
+                        { key: 'shipped', label: 'Shipped', icon: 'bi-truck' },
+                        { key: 'delivered', label: 'Delivered', icon: 'bi-check-circle' }
+                      ].map((st, idx) => {
+                        const curIdx = ['pending', 'processing', 'shipped', 'delivered'].indexOf((trackingOrder.status || 'pending').toLowerCase());
+                        const isDone = curIdx > idx;
+                        const isCurrent = curIdx === idx;
+                        const itemClass = isDone ? 'completed' : isCurrent ? 'active' : '';
+
+                        return (
+                          <div key={st.key} className={`user-step-item ${itemClass}`}>
+                            <div className="user-step-icon-circle">
+                              {isDone ? <i className="bi bi-check-lg"></i> : <i className={`bi ${st.icon}`}></i>}
+                            </div>
+                            <div className="user-step-title">{st.label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className={`user-order-status-banner banner-${(trackingOrder.status || 'pending').toLowerCase()} mt-3`}>
+                      <i className="bi bi-info-circle-fill fs-5"></i>
+                      <span>
+                        {(trackingOrder.status || 'pending').toLowerCase() === 'delivered'
+                          ? 'Your package was safely delivered! We hope you love your purchase.'
+                          : (trackingOrder.status || 'pending').toLowerCase() === 'shipped'
+                          ? `Package is out with courier in transit to ${trackingOrder.address?.city || 'your address'}.`
+                          : (trackingOrder.status || 'pending').toLowerCase() === 'processing'
+                          ? 'Merchant is packing and preparing your electronic hardware for dispatch.'
+                          : 'Your order was received and is awaiting merchant confirmation.'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Grid: Items & Breakdown + Shipping & Payment */}
+                <div className="row g-4">
+                  {/* Left Col: Items & Totals */}
+                  <div className="col-12 col-md-7">
+                    <h6 className="fw-bold text-dark mb-2.5">
+                      <i className="bi bi-box-seam text-primary me-1.5"></i>
+                      Ordered Products ({trackingOrder.items?.length || 0})
+                    </h6>
+                    <div className="table-responsive border rounded-3 mb-3">
+                      <table className="table table-sm align-middle mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th style={{ width: '50px' }}>Item</th>
+                            <th>Product</th>
+                            <th className="text-center" style={{ width: '60px' }}>Qty</th>
+                            <th className="text-end" style={{ width: '90px' }}>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(trackingOrder.items || []).map((it, itIdx) => (
+                            <tr key={itIdx}>
+                              <td>
+                                <img
+                                  src={formatImg(it.thumbnail)}
+                                  alt={it.name}
+                                  style={{ width: '40px', height: '40px', objectFit: 'contain' }}
+                                  className="rounded border p-1 bg-white"
+                                  onError={(e) => { e.target.src = 'https://placehold.co/80x80?text=Product'; }}
+                                />
+                              </td>
+                              <td>
+                                <strong className="text-dark d-block small">{it.name}</strong>
+                                <small className="text-muted">₹{Number(it.price || 0).toLocaleString('en-IN')} each</small>
+                              </td>
+                              <td className="text-center fw-semibold text-muted">&times;{it.quantity}</td>
+                              <td className="text-end fw-bold text-dark">
+                                ₹{Number(it.total || (it.price * it.quantity) || 0).toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Totals Summary */}
+                    <div className="bg-light p-3 rounded-3 border">
+                      <div className="d-flex justify-content-between small text-muted mb-1.5">
+                        <span>Subtotal</span>
+                        <span className="fw-semibold text-dark">₹{Number(trackingOrder.subtotal || trackingOrder.totalAmount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="d-flex justify-content-between small text-muted mb-1.5">
+                        <span>Delivery Charges</span>
+                        {Number(trackingOrder.fee) > 0 ? (
+                          <span className="fw-semibold text-dark">₹{Number(trackingOrder.fee).toLocaleString('en-IN')}</span>
+                        ) : (
+                          <span className="badge bg-success-subtle text-success">FREE</span>
+                        )}
+                      </div>
+                      {Number(trackingOrder.discount) > 0 && (
+                        <div className="d-flex justify-content-between small text-danger mb-1.5">
+                          <span>Discount Voucher</span>
+                          <span className="fw-semibold">- ₹{Number(trackingOrder.discount).toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      <div className="d-flex justify-content-between fs-6 fw-bold text-dark border-top pt-2 mt-2">
+                        <span>Grand Total</span>
+                        <span className="text-primary">₹{Number(trackingOrder.totalAmount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Col: Address & Payment */}
+                  <div className="col-12 col-md-5">
+                    {/* Delivery Address */}
+                    <div className="border rounded-3 p-3 mb-3 bg-white">
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <strong className="text-dark small text-uppercase fw-bold">
+                          <i className="bi bi-geo-alt text-primary me-1"></i> Delivery Address
+                        </strong>
+                        <span className="badge bg-light text-dark border">
+                          {trackingOrder.address?.addressType || 'Home'}
+                        </span>
+                      </div>
+                      {trackingOrder.address ? (
+                        <div className="small text-secondary lh-base">
+                          <strong className="text-dark d-block mb-1">{trackingOrder.address.name}</strong>
+                          <div>{trackingOrder.address.address}</div>
+                          {trackingOrder.address.locality && <div>{trackingOrder.address.locality}</div>}
+                          {trackingOrder.address.landmark && <div className="text-muted">Landmark: {trackingOrder.address.landmark}</div>}
+                          <div className="fw-semibold text-dark mt-1">
+                            {trackingOrder.address.city}, {trackingOrder.address.state} &ndash; {trackingOrder.address.pincode}
+                          </div>
+                          <div className="mt-2 text-dark">
+                            <i className="bi bi-telephone text-primary me-1"></i>
+                            <strong>{trackingOrder.address.mobile}</strong>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="small text-muted mb-0">No address recorded.</p>
+                      )}
+                    </div>
+
+                    {/* Payment Info */}
+                    <div className="border rounded-3 p-3 bg-white">
+                      <strong className="text-dark small text-uppercase fw-bold d-block mb-2">
+                        <i className="bi bi-credit-card text-primary me-1"></i> Payment Details
+                      </strong>
+                      <div className="d-flex justify-content-between align-items-center small mb-2">
+                        <span className="text-muted">Method:</span>
+                        <strong className="text-uppercase text-dark">{trackingOrder.paymentMethod || 'COD'}</strong>
+                      </div>
+                      <div className="d-flex justify-content-between align-items-center small mb-2">
+                        <span className="text-muted">Payment Status:</span>
+                        <span className={`badge rounded-pill text-uppercase px-2.5 py-1 ${
+                          (trackingOrder.paymentStatus || 'pending').toLowerCase() === 'paid'
+                            ? 'bg-success-subtle text-success border border-success-subtle'
+                            : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+                        }`}>
+                          {trackingOrder.paymentStatus || 'pending'}
+                        </span>
+                      </div>
+                      {trackingOrder.paymentTransactionId && (
+                        <div className="small text-muted mt-2 pt-2 border-top">
+                          <span>Transaction ID:</span>
+                          <code className="d-block text-dark mt-0.5" style={{ wordBreak: 'break-all' }}>
+                            {trackingOrder.paymentTransactionId}
+                          </code>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="modal-footer bg-light px-4 py-3 d-flex justify-content-between">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary rounded-pill px-3.5 py-1.5 fw-semibold small d-inline-flex align-items-center gap-1.5"
+                  onClick={() => window.print()}
+                >
+                  <i className="bi bi-printer"></i>
+                  <span>Print Receipt</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-primary rounded-pill px-4 py-1.5 fw-semibold small"
+                  style={{ backgroundColor: '#3945E0', border: 'none' }}
+                  onClick={() => setTrackingOrder(null)}
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

@@ -117,9 +117,11 @@ const DashboardOverview = () => {
       });
 
       setChartData(catChartData.length > 0 ? catChartData : [
-        { name: 'Raspberry Pi', value: 1051400, count: 2 },
-        { name: 'ESP8266 & ESP32', value: 156000, count: 2 },
-        { name: 'Arduino Boards', value: 189800, count: 3 },
+        { name: 'Microcontrollers & Development Boards', value: 35000, count: 14 },
+        { name: 'Actuators & Motors', value: 28000, count: 16 },
+        { name: 'Sensor', value: 18000, count: 14 },
+        { name: 'Power & Battery Components', value: 22000, count: 12 },
+        { name: 'Wireless & Communication Modules', value: 15000, count: 10 },
       ]);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);

@@ -2,7 +2,7 @@ const express= require('express')
 const cors = require('cors')
 const dotenv = require('dotenv')
 const path = require('path');
-dotenv.config({ quiet: true });
+dotenv.config({ quiet: true, override: true });
 const app = express();
 const AdminRoutes = require('./routes/AdminRoutes');
 const mongoDB = require('./config/db');
@@ -21,6 +21,7 @@ app.use('/api/product', require('./routes/ProductRoutes'));
 app.use('/api/cart', require('./routes/CartRoutes'));
 app.use('/api/address', require('./routes/AddressRoutes'));
 app.use('/api/order', require('./routes/OrderRoutes'));
+app.use('/api/payment', require('./routes/razorpayRoute'));
 
 app.listen(process.env.PORT || 5000, () => {
     console.log(`Server is running on port ${process.env.PORT || 5000}`);

@@ -7,7 +7,8 @@ const Address = require('../model/Address');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const profileUpload = require('../middleware/profileUpload');
-
+const sendEmail = require('../utils/Email');
+const { generateWelcomeEmail } = require('../utils/emailTemplates');
 // Register User
 Router.post('/register', profileUpload.single('picture'), async (req, res) => {
     try {
@@ -39,6 +40,19 @@ Router.post('/register', profileUpload.single('picture'), async (req, res) => {
         });
 
         await data.save();
+
+        // Dispatch executive welcome email in background
+        const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+        const welcomeEmail = generateWelcomeEmail({
+            name: data.name,
+            email: data.email,
+            mobile: data.mobile
+        }, clientUrl);
+
+        sendEmail(data.email, welcomeEmail.subject, welcomeEmail.html).catch((err) => {
+            console.error("Async welcome email error:", err);
+        });
+
         return res.status(201).json({
             success: true,
             message: "Registration successful! Please sign in.",
